@@ -576,7 +576,7 @@ marena_push_string (struct marena *arena, char *string)
             temp = marena_push_char(arena, *c);
             if ( !temp ) { break; }
         }
-        if ( temp == 0 ) {
+        if ( *(string + 1) && temp == 0 ) {
             // If we ever fail to push even a single character we amend
             //    all the previously pushed chars and return an invalid reference
             marena_pop_upto(arena, result);
