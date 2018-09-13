@@ -20,7 +20,7 @@
 #include "types.h"
 #include "utils.h"
 #include "pal.h"
-#include "mem_layer.h"
+#include "mem.h"
 
 __BEGIN_DECLS
 

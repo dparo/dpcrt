@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "mem_layer.h"
+#include "mem.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include "assert.h"
