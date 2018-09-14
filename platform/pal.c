@@ -880,6 +880,7 @@ pal_dll_close(dll_handle_t handle)
 #ifdef __linux__
 
     int dlres = dlclose(handle);
+    (void) dlres;
     assert(dlres == 0);
 #elif __WINDOWS__
     result = LoadLibrary(path);
