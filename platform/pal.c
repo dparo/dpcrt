@@ -892,7 +892,7 @@ pal_dll_close(dll_handle_t handle)
 
 void *
 pal_get_proc_addr(dll_handle_t handle,
-                  char *symbol_name)
+                  const char *symbol_name)
 {
     void *result = NULL;
     assert(handle != invalid_dll_handle);
