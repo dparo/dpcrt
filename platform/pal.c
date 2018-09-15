@@ -505,6 +505,159 @@ pal_createdir(char *path )
 }
 
 
+bool
+pal_stat_filetime(char *filepath, struct stat_filetime *out)
+{
+    bool success = true;
+#ifdef __linux__
+
+    struct stat statbuf;
+    int s = stat(filepath, & statbuf);
+    if (s != 0)
+    {
+        success = false;
+        memclr(out, sizeof(*out));
+    }
+    else
+    {
+        out->st_atim = statbuf.st_atim;
+        out->st_mtim = statbuf.st_mtim;
+        out->st_ctim = statbuf.st_ctim;
+    }
+
+#elif __WINDOWS__
+
+    HANDLE handle = CreateFileA(
+        filepath,
+        GENERIC_READ,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL );
+
+    if (handle == NVALID_HANDLE_VALUE)
+    {
+        success = false;
+        memclr(out, sizeof(*out));
+    }
+    else
+    {
+        BOOL b = GetFileTime(
+            handle,
+            & (out->creationTime)
+            & (out->lastAccessTime),
+            & (out->lastWriteTime));
+
+        if (b == 0)
+        {
+            memclr(out, sizeof(*out));
+            success = false;
+        }
+
+        b = CloseHandle(handle);
+        assert(b != 0);
+    }
+#else
+#    error "Not supported platform, needs implementation"
+#endif
+    return success;
+}
+
+
+/* Subtract the ‘struct timeval’ values X and Y,
+   storing the result in RESULT.
+   Return 1 if the difference is negative, otherwise 0. */
+int
+linux__struct_timespec_diff (struct timeval *result, struct timeval *x, struct timeval *y)
+{
+  /* Perform the carry for the later subtraction by updating y. */
+  if (x->tv_usec < y->tv_usec) {
+    int nsec = (y->tv_usec - x->tv_usec) / 1000000 + 1;
+    y->tv_usec -= 1000000 * nsec;
+    y->tv_sec += nsec;
+  }
+  if (x->tv_usec - y->tv_usec > 1000000) {
+    int nsec = (x->tv_usec - y->tv_usec) / 1000000;
+    y->tv_usec += 1000000 * nsec;
+    y->tv_sec -= nsec;
+  }
+
+  /* Compute the time remaining to wait.
+     tv_usec is certainly positive. */
+  result->tv_sec = x->tv_sec - y->tv_sec;
+  result->tv_usec = x->tv_usec - y->tv_usec;
+
+  /* Return 1 if result is negative. */
+  return x->tv_sec < y->tv_sec;
+}
+
+
+/* Subtract the ‘struct timeval’ values X and Y,
+   storing the result in RESULT.
+   Return 1 if the difference is negative, otherwise 0. */
+int
+linux__struct_timeval_diff (struct timespec *result, struct timespec *x, struct timespec *y)
+{
+  /* Perform the carry for the later subtraction by updating y. */
+  if (x->tv_nsec < y->tv_nsec) {
+    int nsec = (y->tv_nsec - x->tv_nsec) / 1000000000ll + 1;
+    y->tv_nsec -= 1000000 * nsec;
+    y->tv_sec += nsec;
+  }
+  if (x->tv_nsec - y->tv_nsec > 1000000) {
+    int nsec = (x->tv_nsec - y->tv_nsec) / 1000000000ll;
+    y->tv_nsec += 1000000 * nsec;
+    y->tv_sec -= nsec;
+  }
+
+  /* Compute the time remaining to wait.
+     tv_nsec is certainly positive. */
+  result->tv_sec = x->tv_sec - y->tv_sec;
+  result->tv_nsec = x->tv_nsec - y->tv_nsec;
+
+  /* Return 1 if result is negative. */
+  return x->tv_sec < y->tv_sec;
+}
+
+
+
+int
+pal_filetime_cmp(struct filetime *ft1,
+                 struct filetime *ft2)
+{
+#ifdef __linux__
+    struct timespec diff;
+
+    int result = 0;
+    if ((ft1->ts.tv_sec == ft2->ts.tv_sec)
+        && (ft1->ts.tv_nsec == ft2->ts.tv_nsec))
+    {
+        result = 0;
+    }
+    else
+    {
+        int is_negative = linux__struct_timeval_diff (& diff, & ft1->ts, & ft2->ts);
+        result = is_negative ? -1 : 1;
+    }
+
+    return result;
+
+#elif __WINDOWS__
+    LONG l = CompareFileTime(
+        & (ft1->ft),
+        & (ft2->ft)
+        );
+    return (int) l;
+#else
+#    error "Not supported platform, needs implementation"
+#endif
+
+}
+
+
+
+
 
 int64_t
 pal_readfile(filehandle_t file, void *buf, int64_t size_to_read)
@@ -580,7 +733,6 @@ pal_spawnproc_sync ( char *command, int * exit_status )
 # error "Not supported platform needs implementation"
 #endif
 }
-
 
 
 
@@ -798,6 +950,10 @@ pal_notify_start_watch_file(filehandle_t notify_instance_fh,
     if (result != invalid_filehandle)
     {
         int r = fcntl(result, F_SETFL, fcntl(result, F_GETFL, 0) | O_NONBLOCK);
+        if (r == -1)
+        {
+            fprintf(stderr, "Failed to set NONBLOCK mode for `inotify` component\n");
+        }
     }
     return result;
 #else
@@ -833,7 +989,7 @@ pal_read_notify_event(filehandle_t notify_instance_fh,
     struct inotify_event e = {0};
 
     ssize_t size = read(notify_instance_fh, & e, sizeof(e));
-    
+
     if (size > 0)
     {
         output->valid = true;
@@ -887,7 +1043,7 @@ pal_dll_close(dll_handle_t handle)
 #else
 #   error "Not supported platform needs implementation"
 #endif
-    
+
 }
 
 void *

@@ -163,6 +163,40 @@ pal_syncproc ( prochandle_t proc, int *status );
 int
 pal_createdir(char *path);
 
+
+typedef struct filetime
+{
+#if __WINDOWS__
+    FILETIME ft;
+#elif __linux__
+    struct timespec ts;
+#else
+# error "Not supported platform needs implementation"
+#endif
+} filetime_t;
+
+typedef struct stat_filetime
+{
+#if __WINDOWS__
+    FILETIME creationTime;
+    FILETIME lastAccessTime;
+    FILETIME lpLastWriteTime;
+#elif __linux__
+    struct timespec st_atim;  /* Time of last access */
+    struct timespec st_mtim;  /* Time of last modification */
+    struct timespec st_ctim;  /* Time of last status change */
+#else
+# error "Not supported platform needs implementation"
+#endif
+} stat_filetime_t;
+
+bool
+pal_stat_filetime(char *filepath, struct stat_filetime *out);
+
+int
+pal_filetime_cmp(struct filetime *ft1,
+                 struct filetime *ft2);
+
 /* ############## */
 /* Memory Mapping */
 /* ############## */
@@ -204,7 +238,7 @@ enum notify_event_flags {
 typedef struct notify_event {
     // If the the current event is valid or just empty (eg no relevant event occured)
     bool valid;
-    
+
     filehandle_t             fh; // The event occured for this specific filehandle
     enum notify_event_flags  flags;
 } notify_event;
