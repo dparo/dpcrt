@@ -13,6 +13,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
+  add_definitions(-D_GNU_SOURCE)
+elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
+  add_definitions(-D_GNU_SOURCE)
+elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
+elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
+else()
+endif()
+
+
 add_library(
   dpcc
 
@@ -37,4 +47,12 @@ target_link_libraries(dpcc
 endif()
 
 target_include_directories(dpcc PUBLIC
-  ./dpcc ./ platform utils)
+  ./dpcc platform utils)
+
+
+if(MSVC)
+    add_definitions(/FI"./build_config.h")
+else()
+    # GCC or Clang
+    add_definitions(-include ./build_config.h)
+endif()
