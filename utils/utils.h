@@ -20,7 +20,7 @@
 
 #include <errno.h>
 #include <string.h>
-#include "build_config.h"
+#include "../build_config.h"
 #include "types.h"
 #include "compiler.h"
 

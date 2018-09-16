@@ -23,6 +23,15 @@ else()
 endif()
 
 
+
+if(MSVC)
+    add_definitions(/FI"./build_config.h")
+else()
+    # GCC or Clang
+    add_definitions(-include ./build_config.h)
+endif()
+
+
 add_library(
   dpcc
 
@@ -47,12 +56,8 @@ target_link_libraries(dpcc
 endif()
 
 target_include_directories(dpcc PUBLIC
-  ./dpcc platform utils)
+  ./ platform utils)
 
+target_include_directories(dpcc PRIVATE
+  ./)
 
-if(MSVC)
-    add_definitions(/FI"./build_config.h")
-else()
-    # GCC or Clang
-    add_definitions(-include ./build_config.h)
-endif()
