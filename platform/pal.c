@@ -520,9 +520,8 @@ pal_stat_filetime(char *filepath, struct stat_filetime *out)
     }
     else
     {
-        out->st_atim = statbuf.st_atim;
-        out->st_mtim = statbuf.st_mtim;
-        out->st_ctim = statbuf.st_ctim;
+        out->last_access.ts = statbuf.st_atim;
+        out->last_modification.ts = statbuf.st_mtim;
     }
 
 #elif __WINDOWS__
@@ -545,9 +544,9 @@ pal_stat_filetime(char *filepath, struct stat_filetime *out)
     {
         BOOL b = GetFileTime(
             handle,
-            & (out->creationTime)
-            & (out->lastAccessTime),
-            & (out->lastWriteTime));
+            NULL
+            & out->last_access.ft,
+            & out->last_modification.ft));
 
         if (b == 0)
         {
@@ -568,8 +567,8 @@ pal_stat_filetime(char *filepath, struct stat_filetime *out)
 /* Subtract the ‘struct timeval’ values X and Y,
    storing the result in RESULT.
    Return 1 if the difference is negative, otherwise 0. */
-int
-linux__struct_timespec_diff (struct timeval *result, struct timeval *x, struct timeval *y)
+static int
+linux__struct_timeval_diff (struct timeval *result, struct timeval *x, struct timeval *y)
 {
   /* Perform the carry for the later subtraction by updating y. */
   if (x->tv_usec < y->tv_usec) {
@@ -596,8 +595,8 @@ linux__struct_timespec_diff (struct timeval *result, struct timeval *x, struct t
 /* Subtract the ‘struct timeval’ values X and Y,
    storing the result in RESULT.
    Return 1 if the difference is negative, otherwise 0. */
-int
-linux__struct_timeval_diff (struct timespec *result, struct timespec *x, struct timespec *y)
+static int
+linux__struct_timespec_diff (struct timespec *result, struct timespec *x, struct timespec *y)
 {
   /* Perform the carry for the later subtraction by updating y. */
   if (x->tv_nsec < y->tv_nsec) {
@@ -630,15 +629,13 @@ pal_filetime_cmp(struct filetime *ft1,
     struct timespec diff;
 
     int result = 0;
-    if ((ft1->ts.tv_sec == ft2->ts.tv_sec)
-        && (ft1->ts.tv_nsec == ft2->ts.tv_nsec))
     {
-        result = 0;
-    }
-    else
-    {
-        int is_negative = linux__struct_timeval_diff (& diff, & ft1->ts, & ft2->ts);
+        int is_negative = linux__struct_timespec_diff (& diff, & ft1->ts, & ft2->ts);
         result = is_negative ? -1 : 1;
+        if (diff.tv_sec == 0 && diff.tv_nsec == 0)
+        {
+            result = 0;
+        }
     }
 
     return result;

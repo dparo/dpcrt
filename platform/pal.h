@@ -177,17 +177,8 @@ typedef struct filetime
 
 typedef struct stat_filetime
 {
-#if __WINDOWS__
-    FILETIME creationTime;
-    FILETIME lastAccessTime;
-    FILETIME lpLastWriteTime;
-#elif __linux__
-    struct timespec st_atim;  /* Time of last access */
-    struct timespec st_mtim;  /* Time of last modification */
-    struct timespec st_ctim;  /* Time of last status change */
-#else
-# error "Not supported platform needs implementation"
-#endif
+    struct filetime last_access;
+    struct filetime last_modification;
 } stat_filetime_t;
 
 bool
