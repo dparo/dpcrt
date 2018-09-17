@@ -20,9 +20,6 @@
 #include <stdio.h>
 #include "assert.h"
 
-#include "build_config.h"
-
-
 void *
 xmalloc ( size_t size )
 {
