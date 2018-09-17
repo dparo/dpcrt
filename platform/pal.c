@@ -38,7 +38,7 @@
 
 
 
-#ifdef __linux__
+#if __linux__
 #  include <execinfo.h>
 #  include <stdlib.h>
 
@@ -162,7 +162,7 @@ pal_sleep_ms(uint32 sleep_ms)
 static inline int
 file_flags__convert(enum open_file_flags flags)
 {
-#ifdef __linux__
+#if __linux__
     int result = 0;
     if (flags & FILE_RDONLY) {
         result |= O_RDONLY;
@@ -217,7 +217,7 @@ file_flags__convert(enum open_file_flags flags)
 filehandle_t
 pal_openfile(char *path, enum open_file_flags flags)
 {
-#ifdef __linux__
+#if __linux__
     {
         int linux_flags = file_flags__convert(flags);
         filehandle_t result = open(path, linux_flags, S_IXUSR | S_IXGRP |S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -232,7 +232,7 @@ pal_openfile(char *path, enum open_file_flags flags)
 int
 pal_closefile(filehandle_t fh)
 {
-#ifdef __linux__
+#if __linux__
     {
         // returns -1 on failure
         return close(fh);
@@ -246,7 +246,7 @@ pal_closefile(filehandle_t fh)
 static inline int
 prot_flags__convert(enum page_prot_flags prot)
 {
-#ifdef __linux__
+#if __linux__
     int result = 0;
     if ( prot & PAGE_PROT_READ ) {
         result |= PROT_READ;
@@ -267,7 +267,7 @@ prot_flags__convert(enum page_prot_flags prot)
 static inline int
 page_type_flags__convert(enum page_type_flags type)
 {
-#ifdef __linux__
+#if __linux__
 
     int result = 0;
     if ( type & PAGE_FIXED ) {
@@ -344,7 +344,7 @@ pal_mmap_memory( void* addr, size_t size, enum page_prot_flags prot, enum page_t
 static inline int
 page_remap_flags__convert(enum page_remap_flags flags)
 {
-#ifdef __linux__
+#if __linux__
 
     int result = 0;
     if ( flags & PAGE_REMAP_MAYMOVE ) {
@@ -364,7 +364,7 @@ void*
 pal_mremap( void* old_addr, size_t old_size, void *new_addr, size_t new_size,
             enum page_remap_flags flags )
 {
-#ifdef __linux__
+#if __linux__
     {
         void *result = NULL;
         int linux_flags = page_remap_flags__convert(flags);
@@ -390,7 +390,7 @@ pal_mremap( void* old_addr, size_t old_size, void *new_addr, size_t new_size,
 bool                            /* returns was_protected */
 pal_mprotect(void *addr, size_t len, enum page_prot_flags prot)
 {
-#ifdef __linux__
+#if __linux__
     {
         int linux_prot = prot_flags__convert(prot);
         int result     = mprotect(addr, len, linux_prot);
@@ -477,7 +477,7 @@ pal_munmap( void* addr, size_t size )
 int
 pal_init( void )
 {
-#ifdef __linux__
+#if __linux__
     {
         int result = false;
 
@@ -497,7 +497,7 @@ pal_init( void )
 int
 pal_createdir(char *path )
 {
-#ifdef __linux__
+#if __linux__
     return mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 #else
 #   error "Not supported platform"
@@ -509,7 +509,7 @@ bool
 pal_stat_filetime(char *filepath, struct stat_filetime *out)
 {
     bool success = true;
-#ifdef __linux__
+#if __linux__
 
     struct stat statbuf;
     int s = stat(filepath, & statbuf);
@@ -625,7 +625,7 @@ int
 pal_filetime_cmp(struct filetime *ft1,
                  struct filetime *ft2)
 {
-#ifdef __linux__
+#if __linux__
     struct timespec diff;
 
     int result = 0;
@@ -659,7 +659,7 @@ pal_filetime_cmp(struct filetime *ft1,
 int64_t
 pal_readfile(filehandle_t file, void *buf, int64_t size_to_read)
 {
-#ifdef __linux__
+#if __linux__
     {
         int64_t result = read(file, buf, size_to_read);
 #if __DEBUG
@@ -682,7 +682,7 @@ pal_readfile(filehandle_t file, void *buf, int64_t size_to_read)
 int64_t
 pal_writefile(filehandle_t file, void *buf, int64_t size_to_write)
 {
-#ifdef __linux__
+#if __linux__
     {
         int64_t result = write(file, buf, size_to_write);
 #if __DEBUG
@@ -706,7 +706,7 @@ pal_writefile(filehandle_t file, void *buf, int64_t size_to_write)
 prochandle_t
 pal_spawnproc_sync ( char *command, int * exit_status )
 {
-#ifdef __linux__
+#if __linux__
     pid_t id = fork ();
     if ( id == - 1) {
         // error on fork
@@ -737,7 +737,7 @@ pal_spawnproc_sync ( char *command, int * exit_status )
 prochandle_t
 pal_spawnproc_async ( char * command )
 {
-#ifdef __linux__
+#if __linux__
     pid_t id = fork ();
     if ( id == - 1) {
         // error on fork
@@ -764,7 +764,7 @@ prochandle_t
 pal_spawnproc_async_piped ( char *command,
                             filehandle_t *inpipe, filehandle_t *outpipe)
 {
-#ifdef __linux__
+#if __linux__
     filehandle_t outpipes[2] = {0};
     filehandle_t inpipes[2] = {0};
     int piperes = pipe(outpipes);
@@ -820,7 +820,7 @@ pal_spawnproc_async_piped ( char *command,
 void
 pal_syncproc ( prochandle_t proc, int *status )
 {
-#ifdef __linux__
+#if __linux__
     int local_status;
     waitpid ( proc, (status != NULL) ? status : &local_status, 0 );
 #else
@@ -833,7 +833,7 @@ pal_syncproc ( prochandle_t proc, int *status )
 filehandle_t
 pal_create_notify_instance(void)
 {
-#ifdef __linux__
+#if __linux__
     return inotify_init1(IN_NONBLOCK);
 #else
 #   error "Not supported platform needs implementation"
@@ -844,7 +844,7 @@ pal_create_notify_instance(void)
 static inline uint32
 notify_event_flags__convert(enum notify_event_flags flags)
 {
-#ifdef __linux__
+#if __linux__
     uint32 result = 0;
     if (flags & NotifyEventFlags_Access) {
         result |= IN_ACCESS;
@@ -889,7 +889,7 @@ notify_event_flags__convert(enum notify_event_flags flags)
 #endif
 }
 
-#ifdef __linux__
+#if __linux__
 static inline enum notify_event_flags
 linux_inotify_event_mask__convert(uint32_t mask)
 {
@@ -941,7 +941,7 @@ pal_notify_start_watch_file(filehandle_t notify_instance_fh,
                             enum notify_event_flags flags)
 {
     assert(notify_instance_fh != invalid_filehandle);
-#ifdef __linux__
+#if __linux__
     uint32 mask = notify_event_flags__convert(flags);
     filehandle_t result = inotify_add_watch(notify_instance_fh, file_path, mask);
     if (result != invalid_filehandle)
@@ -966,7 +966,7 @@ pal_notify_end_watch_file(filehandle_t notify_instance_fh,
 
     assert(notify_instance_fh && notify_instance_fh != invalid_filehandle);
     assert(watch_descriptor && watch_descriptor != invalid_filehandle);
-#ifdef __linux__
+#if __linux__
     inotify_rm_watch(notify_instance_fh, watch_descriptor);
 #else
 #   error "Not supported platform needs implementation"
@@ -981,7 +981,7 @@ pal_read_notify_event(filehandle_t notify_instance_fh,
                       struct notify_event *output)
 {
 
-#ifdef __linux__
+#if __linux__
     bool success = true;
     struct inotify_event e = {0};
 
@@ -1015,7 +1015,7 @@ dll_handle_t
 pal_dll_open(char *path)
 {
     dll_handle_t result = 0;
-#ifdef __linux__
+#if __linux__
     result = dlopen(path, RTLD_NOW | RTLD_LOCAL);
 #elif __WINDOWS__
     result = LoadLibrary(path);
@@ -1030,7 +1030,7 @@ void
 pal_dll_close(dll_handle_t handle)
 {
     assert(handle != invalid_dll_handle);
-#ifdef __linux__
+#if __linux__
 
     int dlres = dlclose(handle);
     (void) dlres;
@@ -1049,7 +1049,7 @@ pal_get_proc_addr(dll_handle_t handle,
 {
     void *result = NULL;
     assert(handle != invalid_dll_handle);
-#ifdef __linux__
+#if __linux__
     result = dlsym(handle, symbol_name);
 #elif __WINDOWS__
     result = (void*) GetProcAddress(handle, symbol_name);

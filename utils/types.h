@@ -21,6 +21,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include "compiler.h"
 
 __BEGIN_DECLS
 
