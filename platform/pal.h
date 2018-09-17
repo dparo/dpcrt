@@ -51,7 +51,6 @@ enum page_remap_flags {
 };
 
 
-#ifdef __linux__
 enum open_file_flags {
     FILE_NONE      = 0,
     FILE_RDONLY    = (1 << 0),
@@ -69,11 +68,6 @@ enum open_file_flags {
     FILE_SYNC      = (1 << 12),
     FILE_TRUNC     = (1 << 13),
 };
-
-
-#else
-#   error "Needs implementation"
-#endif
 
 #if __linux__
 #include <sys/types.h>
@@ -279,7 +273,7 @@ pal_get_proc_addr(dll_handle_t handle,
 
 
 
-#ifdef _MSC_VER
+#if _MSC_VER
 #     define debug_break __debugbreak
 #else
 #    include <signal.h>

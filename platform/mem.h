@@ -166,7 +166,7 @@ marena_unpack_ref__unsafe(struct marena *arena, mem_ref_t ref)
     assert(arena->buffer);
     assert(arena->data_size);
     assert(ref < arena->data_size);
-    return (void *) arena->buffer + ref;
+    return (ptr_t) ((uint8 *) arena->buffer + ref);
 }
 
 __END_DECLS

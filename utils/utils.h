@@ -125,7 +125,7 @@ __BEGIN_DECLS
 
 
 # ifndef offsetof
-#   ifdef __GNUC__
+#   if __GNUC__
 #     define offsetof(type, member) __builtin_offsetof (type, member)
 #   else
 #     define offsetof(type, member) ((size_t)&(((type *)0)->member))

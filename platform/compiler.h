@@ -21,7 +21,7 @@
 
 #define __WINDOWS__ _WIN16 || _WIN32 || _WIN64
 
-#ifdef	__cplusplus
+#if	__cplusplus
 #  ifndef __BEGIN_DECLS
 #    define __BEGIN_DECLS extern "C" {
 #  endif
@@ -46,7 +46,7 @@ __BEGIN_DECLS
 // Supports for functions that gets run before entering in main
 // example CONSTRUCT(my_init)
 // void my_init(void) { ... }
-#ifdef __GNUC__
+#if __GNUC__
 #  define CONSTRUCT(_func) static void _func (void) __attribute__((constructor));
 #  define DESTRUCT(_func) static void _func (void) __attribute__((destructor));
 #  define DEPRECATED __attribute__((deprecated))
@@ -74,7 +74,7 @@ __BEGIN_DECLS
 // #################################################
 
 
-#ifdef __GNUC__
+#if __GNUC__
 #   define PRINTF_STYLE(STRING_INDEX, FIRST_TO_CHECK)                   \
     __attribute__ ((format(printf, (STRING_INDEX), (FIRST_TO_CHECK))))
 
@@ -106,14 +106,14 @@ __BEGIN_DECLS
 
 // Compiler DLL Support, please refer to page        https://gcc.gnu.org/wiki/Visibility
 #if __WINDOWS__ || __CYGWIN__
-  #ifdef BUILDING_DLL
-    #ifdef __GNUC__
+  #if BUILDING_DLL
+    #if __GNUC__
       #define DLL_GLOBAL __attribute__ ((dllexport))
     #else
       #define DLL_GLOBAL __declspec(dllexport) // Note: actually gcc seems to also supports this syntax.
     #endif
   #else
-    #ifdef __GNUC__
+    #if __GNUC__
       #define DLL_GLOBAL __attribute__ ((dllimport))
     #else
       #define DLL_GLOBAL __declspec(dllimport) // Note: actually gcc seems to also supports this syntax.
