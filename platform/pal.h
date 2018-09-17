@@ -92,7 +92,9 @@ static const dll_handle_t null_dll_handle = 0;
 static const dll_handle_t invalid_dll_handle = 0;
 
 
-#else
+#elif __WINDOWS__
+#include <windows.h>
+
 typedef HFILE   filehandle_t;
 typedef int     prochandle_t;
 typedef HMODULE dll_handle_t;
@@ -104,7 +106,8 @@ static const filehandle_t stdout_filehandle  = 1;
 static const filehandle_t stderr_filehandle  = 2;
 static const dll_handle_t null_dll_handle = 0;
 static const dll_handle_t invalid_dll_handle = 0;
-
+#else
+# error "Not supported platform"
 #endif
 
 
