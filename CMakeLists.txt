@@ -41,12 +41,21 @@ add_library(
   utils/math-utils.c
 
   utils/mem_layout.c
-  platform/pal.c
   platform/mem.c
   platform/streams.c
 
   )
 
+if(UNIX AND NOT APPLE)
+  target_sources(dpcc PRIVATE platform/pal_linux.c)
+elseif(WIN32)
+  target_sources(dpcc PRIVATE platform/pal_win32.c)
+elseif(APPLE)
+  target_sources(dpcc PRIVATE platform/pal_apple.c)
+else()
+  message(FATAL_ERROR "Platform not supported")
+endif()
+  
 target_link_libraries(dpcc
   PUBLIC -lm)
 
