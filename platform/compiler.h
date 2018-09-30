@@ -81,7 +81,7 @@ __BEGIN_DECLS
 #   define NON_NULL_PARAM(NUM) __attribute__((nonnull (NUM)));
 
 #elif defined (_MSC_VER) && (_MSC_VER >= 1500)
-#   error "Implement me for windows"
+#   define PRINTF_STYLE(STRING_INDEX, FIRST_TO_CHECK)
 #else
 #error "You will need constructor support for your compiler"
 #endif

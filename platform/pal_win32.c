@@ -59,17 +59,6 @@ static void sigsegv_linux_callback(int sig)
 
 
 
-
-void*
-pal_mmap_memory( void* addr, size_t size, enum page_prot_flags prot, enum page_type_flags type )
-{
-    const filehandle_t fh = 0;
-    return pal_mmap_aux( addr, size, prot, type, fh );
-}
-
-
-
-
 bool
 pal_stat_filetime(char *filepath, struct stat_filetime *out)
 {
@@ -112,10 +101,8 @@ int
 pal_filetime_cmp(struct filetime *ft1,
                  struct filetime *ft2)
 {
-    LONG l = CompareFileTime(
-        & (ft1->ft),
-        & (ft2->ft)
-        );
+    LONG l = CompareFileTime(& ft1->ft,
+                             & ft2->ft );
     return (int) l;
 }
 

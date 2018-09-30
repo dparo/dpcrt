@@ -64,11 +64,9 @@ linux_print_stack_trace(void)
     fflush(stderr);
 }
 
-
-#if __DEBUG
-
 static void
-gdb_print_stack_trace(void) {
+gdb_print_stack_trace(void)
+{
     char pid_buf[30];
     snprintf(pid_buf, sizeof(pid_buf), "%d", getpid());
     char name_buf[512];
@@ -83,9 +81,6 @@ gdb_print_stack_trace(void) {
         waitpid(child_pid,NULL,0);
     }
 }
-
-#endif
-
 
 void
 pal_print_stack_trace(void)
@@ -303,21 +298,19 @@ void*
 pal_mremap( void* old_addr, size_t old_size, void *new_addr, size_t new_size,
             enum page_remap_flags flags )
 {
-    {
-        void *result = NULL;
-        int linux_flags = page_remap_flags__convert(flags);
-        if ( new_addr ) {
-            result = mremap(old_addr, old_size, new_size, linux_flags, new_addr);
-        }
-        else {
-            result = mremap(old_addr, old_size, new_size, linux_flags );
-            if ( result == MAP_FAILED) {
-                result = 0;
-            }
-        }
-        assert(result);
-        return result;
+    void *result = NULL;
+    int linux_flags = page_remap_flags__convert(flags);
+    if ( new_addr ) {
+        result = mremap(old_addr, old_size, new_size, linux_flags, new_addr);
     }
+    else {
+        result = mremap(old_addr, old_size, new_size, linux_flags );
+        if ( result == MAP_FAILED) {
+            result = 0;
+        }
+    }
+    assert(result);
+    return result;
 }
 
 
