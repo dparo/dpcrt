@@ -56,22 +56,6 @@ __BEGIN_DECLS
 #  define MEMORY_ARENA_ALWAYS_FORCE_REALLOC_AT_EVERY_PUSH ((1) && __DEBUG)
 #endif
 
-
-/* =======================================
-   LEXER CONFIGS 
-   =======================================*/
-
-/* Should the lexer generate new tokens for whitespaces,
-   or simply "eat" them without generating tokens.
-   @NOTE: Enabling this flag may require a more difficult
-   parser implementation since it must be aware that 
-   whitespaces between words and identifier maybe present or not,
-   depending on the input*/
-#ifndef LEX_WHITESPACES_ENABLED
-#  define LEX_WHITESPACES_ENABLED (0)
-#endif
-
-
 __END_DECLS
 
 #endif
