@@ -162,3 +162,27 @@ laplace_cdf_f64(float64 x,
     return result;
 }
 
+
+
+float64
+stirling_binomial(uint32 n)
+{
+    float64 result;
+    if (n < 8)
+    {
+        static const uint32 table[8] = {
+            1, 1, 2, 6, 24, 120, 720, 5040
+        };
+        result = (float64) table[n];
+    }
+    else
+    {
+        // Otherwise compute the stirling approximation:
+        //     https://en.wikipedia.org/wiki/Stirling%27s_approximation
+        const float64 e = EULER_NUM;
+        const float64 div_term = (float64) n / e;
+        const float64 power_term = powl(div_term, n);
+        result = sqrt( 2 * PI * n) * power_term;
+    }
+    return result;
+}

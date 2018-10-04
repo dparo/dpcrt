@@ -24,6 +24,13 @@
 
 __BEGIN_DECLS
 
+#ifndef PI
+# define PI (3.14159265359)
+#endif
+
+#define EULER_NUM 2.71828182846
+
+
 // @NOTE ::
 // - https://en.wikipedia.org/wiki/Probability_density_function
 //       `pdf` shorthand stands for **Probability Density Function**
@@ -87,6 +94,9 @@ laplace_cdf_f64(float64 x,
                 float64 mu,  // mu = location parameter
                 float64 b);  // b = diversity: eg a scaling factor
 
+
+float64
+stirling_binomial(uint32 n);
 
 __END_DECLS
 
