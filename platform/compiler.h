@@ -50,9 +50,9 @@ __BEGIN_DECLS
 #  define CONSTRUCT(_func) static void _func (void) __attribute__((constructor));
 #  define DESTRUCT(_func) static void _func (void) __attribute__((destructor));
 #  define DEPRECATED __attribute__((deprecated))
-#  define PURE __attribute__((pure))
-#  define CONST __attribute__((const))
-#  define FUNCTIONAL CONST
+#  define PURE_ATTRIB __attribute__((pure))
+#  define CONST_ATTRIB __attribute__((const))
+#  define FUNCTIONAL_ATTRIB CONST_ATTRIB
 #elif defined (_MSC_VER) && (_MSC_VER >= 1500)
 #  define CONSTRUCT(_func)                                              \
     static void _func(void);                                            \
@@ -65,9 +65,9 @@ __BEGIN_DECLS
     static int _func ## _constructor(void) { atexit (_func); return 0; } \
     __pragma(section(".CRT$XCU",read))                                  \
         __declspec(allocate(".CRT$XCU")) static int (* _array ## _func)(void) = _func ## _constructor;
-#  define PURE
-#  define CONST
-#  define FUNCTIONAL CONST
+#  define PURE_ATTRIB
+#  define CONST_ATTRIB
+#  define FUNCTIONAL_ATTRIB CONST_ATTRIB
 #else
 #  error "You will need constructor support for your compiler"
 #endif

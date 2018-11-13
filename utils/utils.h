@@ -65,7 +65,6 @@ __BEGIN_DECLS
 
 
 
-
 #if defined __DEBUG
 /* Note keep this in one liner to make the __LINE__ macro expansion work */
 #define TEST_FUNCTION(test)                                             \

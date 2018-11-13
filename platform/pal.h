@@ -70,8 +70,12 @@ enum open_file_flags {
 };
 
 #if __linux__
+
+// @TODO :: Remove these platform specific includes
 #include <sys/types.h>
 #include <unistd.h>
+
+typedef int pid_t;
 typedef int   filehandle_t;
 typedef pid_t prochandle_t;
 typedef void* dll_handle_t;
@@ -87,6 +91,8 @@ static const dll_handle_t invalid_dll_handle = 0;
 
 
 #elif __WINDOWS__
+
+// @TODO :: Remove these platform specific includes
 #include <windows.h>
 
 typedef HFILE   filehandle_t;
@@ -337,14 +343,6 @@ __inline__ static void __debug_break(char* file, int32_t line)
 
 #    define assert(X) do { } while(0)
 #endif
-
-#ifndef CONCAT_
-# define CONCAT_(a, ...) a ## __VA_ARGS__
-#endif
-#ifndef CONCAT
-# define CONCAT(a, ...) CONCAT_(a, __VA_ARGS__)
-#endif
-
 
 #ifndef static_assert
 # if __STDC_VERSION__ >= STD_C11_VERSION

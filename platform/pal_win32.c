@@ -21,10 +21,6 @@
 
 #include <windows.h>
 
-
-
-
-
 PRINTF_STYLE(1,2)
 void
 fatal(char *fmt, ...)
@@ -71,7 +67,7 @@ pal_stat_filetime(char *filepath, struct stat_filetime *out)
         FILE_ATTRIBUTE_NORMAL,
         NULL );
 
-    if (handle == NVALID_HANDLE_VALUE)
+    if (handle == INVALID_HANDLE_VALUE)
     {
         success = false;
         memclr(out, sizeof(*out));
@@ -82,7 +78,7 @@ pal_stat_filetime(char *filepath, struct stat_filetime *out)
             handle,
             NULL
             & out->last_access.ft,
-            & out->last_modification.ft));
+            & out->last_modification.ft);
 
         if (b == 0)
         {
@@ -124,7 +120,7 @@ void
 pal_dll_close(dll_handle_t handle)
 {
     assert(handle != invalid_dll_handle);
-    LoadLibrary(path);
+    FreeLibrary(handle);
 }
 
 void *
