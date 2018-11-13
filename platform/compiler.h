@@ -66,9 +66,33 @@
 __BEGIN_DECLS
 
 
-/* Compiler dependent defines AND OR wrappers */
+/* Standard versions defined by the compiler. Example usage
+   # if __STDC_VERSION__ >= C11_STD_VERSION
+   {| Do things here that requires at least c11 support |}
+   # endif
+*/
+#define STD_C89_VERSION   199409L
+#define STD_ANSIC_VERSION C89_STD
+#define STD_C99_VERSION   199901L
+#define STD_C11_VERSION   201112L
+#define STD_C17_VERSION   201710L
 
-// Supports for functions that gets run before entering in main
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+
+
+#if defined  __GNUC__ || defined __GNUG__ || defined __clang__
+# define ARRAY_LEN(arr)                                                 \
+    (sizeof(arr) / sizeof((arr)[0])                                     \
+     + sizeof(typeof(int[1 - 2 *                                        \
+                         !!__builtin_types_compatible_p(typeof(arr), typeof(&arr[0]))])) * 0)
+#else
+# define ARRAY_LEN(A)                           \
+    (sizeof(A) / sizeof((A)[0]))
+#endif
+
+
+
+// Supports for functions that gets run before entering `main`
 // example CONSTRUCT(my_init)
 // void my_init(void) { ... }
 #if __GNUC__
@@ -113,24 +137,8 @@ __BEGIN_DECLS
 // #################################################
 
 
-
-/* Standard versions defined by the compiler. Example usage
-   # if __STDC_VERSION__ >= C11_STD_VERSION
-   {| Do things here that requires at least c11 support |}
-   # endif
-*/
-#define STD_C89_VERSION   199409L
-#define STD_ANSIC_VERSION C89_STD
-#define STD_C99_VERSION   199901L
-#define STD_C11_VERSION   201112L
-#define STD_C17_VERSION   201710L
-
-#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-
-
-
 // Compiler DLL Support, please refer to page        https://gcc.gnu.org/wiki/Visibility
-#if __WINDOWS__ || __CYGWIN__
+#if __PAL_WINDOWS__ || __CYGWIN__
   #if BUILDING_DLL
     #if __GNUC__
       #define DLL_GLOBAL __attribute__ ((dllexport))

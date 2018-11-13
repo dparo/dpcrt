@@ -34,18 +34,6 @@ __BEGIN_DECLS
 
 #define cast(T, expr) (T) (expr)
 
-
-#if defined  __GNUC__ || defined __GNUG__ || defined __clang__
-# define ARRAY_LEN(arr)                                                 \
-    (sizeof(arr) / sizeof((arr)[0])                                     \
-     + sizeof(typeof(int[1 - 2 *                                        \
-                         !!__builtin_types_compatible_p(typeof(arr), typeof(&arr[0]))])) * 0)
-#else
-# define ARRAY_LEN(A)                           \
-    (sizeof(A) / sizeof((A)[0]))
-#endif
-
-
 #define STRINGIFY(x) #x
 #define __AT_SRC__ __FILE__ ":" STRINGIFY(__LINE__)
 

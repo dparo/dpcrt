@@ -18,6 +18,7 @@
 #define PLATFORM__PAL_H
 
 #include "utils.h"
+#include <stdio.h>
 
 __BEGIN_DECLS
 
@@ -69,7 +70,7 @@ enum open_file_flags {
     FILE_TRUNC     = (1 << 13),
 };
 
-#if __linux__
+#if __PAL_LINUX__
 typedef int pid_t;
 typedef int   filehandle_t;
 typedef pid_t prochandle_t;
@@ -85,7 +86,7 @@ static const dll_handle_t null_dll_handle = 0;
 static const dll_handle_t invalid_dll_handle = 0;
 
 
-#elif __WINDOWS__
+#elif __PAL_WINDOWS__
 
 // @TODO :: Once we start having a nice windows compilation sort those typedefs out.
 
@@ -101,8 +102,11 @@ static const filehandle_t stderr_filehandle  = 2;
 static const dll_handle_t null_dll_handle = 0;
 static const dll_handle_t invalid_dll_handle = 0;
 #else
-# error "Not supported platform"
+# error "Platform Not Supported"
 #endif
+
+
+filehandle_t filehandle;
 
 
 void

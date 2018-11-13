@@ -19,29 +19,52 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdbool.h>
 #include "compiler.h"
 
 __BEGIN_DECLS
 
 typedef uint8_t* ptr_t;
-
-typedef float float32;
-typedef double float64;
-
+typedef float    float32;
+typedef double   float64;
 typedef int8_t   int8;
 typedef uint8_t  uint8;
 typedef uint8    byte_t;
-
 typedef int16_t  int16;
 typedef uint16_t uint16;
-
 typedef int32_t  int32;
 typedef uint32_t uint32;
-
 typedef int64_t  int64;
 typedef uint64_t uint64;
+
+
+typedef uint8_t* ptr_t;
+typedef float    F32;
+typedef double   F64;
+typedef int8_t   I8;
+typedef uint8_t  U8;
+typedef uint8    Byte;
+typedef int16_t  I16;
+typedef uint16_t U16;
+typedef int32_t  I32;
+typedef uint32_t U32;
+typedef int64_t  I64;
+typedef uint64_t U64;
+
+
+
+typedef struct Str32
+{
+    U32 len;
+    char *data;
+} Str32;
+
+#define STR32_LIT(S)                            \
+    (Str32) {                                   \
+        ARRAY_LEN(S),                           \
+            (char*) S                           \
+            }
+
 
 
 #if __PAL_LINUX__
