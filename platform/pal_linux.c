@@ -19,21 +19,22 @@
 #include "pal.h"
 #include "utils.h"
 
-#  include <errno.h>
-#  include <sys/mman.h>
-#  include <sys/stat.h>
-#  include <fcntl.h>
-#  include <unistd.h>
-#  include <signal.h>
-#  include <sys/wait.h>
-#  include <sys/inotify.h>
-#  include <dlfcn.h>
-#  define MAP_HUGE_2MB    (21 << MAP_HUGE_SHIFT)
-#  define MAP_HUGE_1GB    (30 << MAP_HUGE_SHIFT)
+#include <errno.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <sys/inotify.h>
+#include <dlfcn.h>
+#define MAP_HUGE_2MB    (21 << MAP_HUGE_SHIFT)
+#define MAP_HUGE_1GB    (30 << MAP_HUGE_SHIFT)
 
 
-#  include <execinfo.h>
-#  include <stdlib.h>
+#include <execinfo.h>
+#include <stdlib.h>
+#include <sys/types.h>
 
 
 PRINTF_STYLE(1,2)
@@ -421,8 +422,8 @@ pal_stat_filetime(char *filepath, struct stat_filetime *out)
     }
     else
     {
-        out->last_access.ts = statbuf.st_atim;
-        out->last_modification.ts = statbuf.st_mtim;
+        out->last_access.tv_sec = statbuf.st_atim.tv_sec;
+        out->last_modification.tv_sec = statbuf.st_mtim.tv_sec;
     }
 
     return success;
@@ -456,33 +457,32 @@ linux__struct_timeval_diff (struct timeval *result, struct timeval *x, struct ti
   return x->tv_sec < y->tv_sec;
 }
 
-
-/* Subtract the ‘struct timeval’ values X and Y,
-   storing the result in RESULT.
-   Return 1 if the difference is negative, otherwise 0. */
-static int
-linux__struct_timespec_diff (struct timespec *result, struct timespec *x, struct timespec *y)
+int
+pal_filetime_diff(struct filetime *result,
+                  struct filetime *x,
+                  struct filetime *y)
 {
-  /* Perform the carry for the later subtraction by updating y. */
-  if (x->tv_nsec < y->tv_nsec) {
-    int nsec = (y->tv_nsec - x->tv_nsec) / 1000000000ll + 1;
-    y->tv_nsec -= 1000000 * nsec;
-    y->tv_sec += nsec;
-  }
-  if (x->tv_nsec - y->tv_nsec > 1000000) {
-    int nsec = (x->tv_nsec - y->tv_nsec) / 1000000000ll;
-    y->tv_nsec += 1000000 * nsec;
-    y->tv_sec -= nsec;
-  }
+    /* Perform the carry for the later subtraction by updating y. */
+    if (x->tv_nsec < y->tv_nsec) {
+        int nsec = (y->tv_nsec - x->tv_nsec) / 1000000000ll + 1;
+        y->tv_nsec -= 1000000 * nsec;
+        y->tv_sec += nsec;
+    }
+    if (x->tv_nsec - y->tv_nsec > 1000000) {
+        int nsec = (x->tv_nsec - y->tv_nsec) / 1000000000ll;
+        y->tv_nsec += 1000000 * nsec;
+        y->tv_sec -= nsec;
+    }
 
-  /* Compute the time remaining to wait.
-     tv_nsec is certainly positive. */
-  result->tv_sec = x->tv_sec - y->tv_sec;
-  result->tv_nsec = x->tv_nsec - y->tv_nsec;
+    /* Compute the time remaining to wait.
+       tv_nsec is certainly positive. */
+    result->tv_sec = x->tv_sec - y->tv_sec;
+    result->tv_nsec = x->tv_nsec - y->tv_nsec;
 
-  /* Return 1 if result is negative. */
-  return x->tv_sec < y->tv_sec;
+    /* Return 1 if result is negative. */
+    return x->tv_sec < y->tv_sec;
 }
+
 
 
 
@@ -490,11 +490,11 @@ int
 pal_filetime_cmp(struct filetime *ft1,
                  struct filetime *ft2)
 {
-    struct timespec diff;
+    struct filetime diff;
 
     int result = 0;
     {
-        int is_negative = linux__struct_timespec_diff (& diff, & ft1->ts, & ft2->ts);
+        int is_negative = pal_filetime_diff (& diff, ft1, ft2);
         result = is_negative ? -1 : 1;
         if (diff.tv_sec == 0 && diff.tv_nsec == 0)
         {

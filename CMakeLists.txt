@@ -46,6 +46,58 @@ add_library(
 
   )
 
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+  # 32 bits
+  set(__PAL_ARCHITECTURE_SIZE__ 32)
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  # 64 bits
+  set(__PAL_ARCHITECTURE_SIZE__ 64)
+endif()
+
+target_compile_definitions(
+  dpcc
+
+  PUBLIC
+  __PAL_ARCHITECTURE_SIZE__=${__PAL_ARCHITECTURE_SIZE__}
+  )
+
+
+
+if(WIN32)
+  if(CMAKE_CL_64)
+    # Compiling for a 64 Bit Windows PLATFORM
+    target_compile_definitions(
+      dpcc
+      PUBLIC
+      __PAL_WINDOWS__
+      __PAL_WINDOWS_VERSION__=64
+      )
+  else()
+    # Compiling for a 32 Bit Windows PLATFORM
+    target_compile_definitions(
+      dpcc
+      PUBLIC
+      __PAL_WINDOWS__
+      __PAL_WINDOWS_VERSION__=32
+      )
+  endif()
+
+elseif(UNIX AND NOT APPLE)
+      target_compile_definitions(
+      dpcc
+      PUBLIC
+      __PAL_LINUX__
+      )
+
+  else()
+    target_compile_definitions(
+      dpcc
+      PUBLIC
+      __PAL_APPLE__
+      )
+
+endif()
+
 if(UNIX AND NOT APPLE)
   target_sources(dpcc PRIVATE platform/pal_linux.c)
 elseif(WIN32)
@@ -55,7 +107,7 @@ elseif(APPLE)
 else()
   message(FATAL_ERROR "Platform not supported")
 endif()
-  
+
 target_link_libraries(dpcc
   PUBLIC -lm)
 
@@ -69,4 +121,3 @@ target_include_directories(dpcc PUBLIC
 
 target_include_directories(dpcc PRIVATE
   ./)
-

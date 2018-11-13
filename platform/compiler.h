@@ -18,8 +18,33 @@
 #define COMPILER_H
 
 
+#ifndef __PAL_WINDOWS__
+#  define __PAL_WINDOWS__ _WIN16 || _WIN32 || _WIN64
+#endif
 
-#define __WINDOWS__ _WIN16 || _WIN32 || _WIN64
+# if _WIN16
+#   define __PAL_WINDOWS_VERSION__ (16)
+# endif
+# if _WIN32
+#   define __PAL_WINDOWS_VERSION__ (32)
+# endif
+# if _WIN64
+#   define __PAL_WINDOWS_VERSION__ (64)
+# endif
+
+
+#ifndef __PAL_LINUX__
+#  if __linux__
+#    define __PAL_LINUX__ (1)
+#  endif
+#endif
+
+#ifndef __PAL_APPLE__
+#  if __APPLE__
+#    define __PAL_APPLE__ (1)
+#  endif
+#endif
+
 
 #if	__cplusplus
 #  ifndef __BEGIN_DECLS

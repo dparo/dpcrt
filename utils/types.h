@@ -43,6 +43,15 @@ typedef uint32_t uint32;
 typedef int64_t  int64;
 typedef uint64_t uint64;
 
+
+#if __PAL_LINUX__
+#  if __PAL_ARCHITECTURE_SIZE__ == 64
+typedef long int time_t;
+#  else
+#    error "Double check what's the correct time_t rappresentation for 32 bit machines."
+#  endif
+#endif
+
 __END_DECLS
 
 #endif

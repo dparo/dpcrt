@@ -52,6 +52,20 @@ xrealloc ( void *ptr,
     return result;
 }
 
+#if __PAL_LINUX__
+# include <unistd.h>
+#endif
+
+static inline void *
+mem_sbrk(size_t size)
+{
+#if __PAL_LINUX__
+    return sbrk(size);
+#else
+    invalid_code_path("sbrk is not a valid allocation strategy for Windows platforms");
+    return 0;
+#endif
+}
 
 void *
 mem_alloc( enum alloc_strategy alloc_strategy, size_t size, size_t alignment)
@@ -91,7 +105,7 @@ mem_alloc( enum alloc_strategy alloc_strategy, size_t size, size_t alignment)
     } break;
 
     case AllocStrategy_Sbrk: {
-        return sbrk(size);
+        return mem_sbrk(size);
     } break;
     }
     return NULL;

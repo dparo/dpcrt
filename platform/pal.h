@@ -70,11 +70,6 @@ enum open_file_flags {
 };
 
 #if __linux__
-
-// @TODO :: Remove these platform specific includes
-#include <sys/types.h>
-#include <unistd.h>
-
 typedef int pid_t;
 typedef int   filehandle_t;
 typedef pid_t prochandle_t;
@@ -92,8 +87,7 @@ static const dll_handle_t invalid_dll_handle = 0;
 
 #elif __WINDOWS__
 
-// @TODO :: Remove these platform specific includes
-#include <windows.h>
+// @TODO :: Once we start having a nice windows compilation sort those typedefs out.
 
 typedef HFILE   filehandle_t;
 typedef int     prochandle_t;
@@ -169,13 +163,8 @@ pal_createdir(char *path);
 
 typedef struct filetime
 {
-#if __WINDOWS__
-    FILETIME ft;
-#elif __linux__
-    struct timespec ts;
-#else
-# error "Not supported platform needs implementation"
-#endif
+    time_t tv_sec;  // whole seconds (valid values are >= 0) 
+    time_t tv_nsec; // nanoseconds (valid values are [0, 999999999 (0.9999.. sec)])
 } filetime_t;
 
 typedef struct stat_filetime
@@ -187,9 +176,19 @@ typedef struct stat_filetime
 bool
 pal_stat_filetime(char *filepath, struct stat_filetime *out);
 
+
+/* Return 1 if the difference is negative, otherwise 0. */
+int
+pal_filetime_diff(struct filetime *result,
+                  struct filetime *x,
+                  struct filetime *y);
+
+/* This function is a more convenient wrapper around `pal_filetime_diff` 
+ * which doesn't return the result of the difference */
 int
 pal_filetime_cmp(struct filetime *ft1,
                  struct filetime *ft2);
+
 
 /* ############## */
 /* Memory Mapping */
