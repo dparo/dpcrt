@@ -17,10 +17,6 @@
 #ifndef BUILD_CONFIG_H
 #define BUILD_CONFIG_H
 
-#include "compiler.h"
-
-__BEGIN_DECLS
-
 /* =======================================
    UTILS AND PLATFORM LAYER CONFIGS 
    =======================================*/
@@ -55,7 +51,5 @@ __BEGIN_DECLS
 #ifndef MEMORY_ARENA_ALWAYS_FORCE_REALLOC_AT_EVERY_PUSH
 #  define MEMORY_ARENA_ALWAYS_FORCE_REALLOC_AT_EVERY_PUSH ((1) && __DEBUG)
 #endif
-
-__END_DECLS
 
 #endif

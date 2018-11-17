@@ -17,13 +17,13 @@
 #include "streams.h"
 #include "pal.h"
 
-
 static void
 istream__reset_buffer(struct istream *istream,
-                      size_t size)
+                      I64 size)
 {
-    assert((int64)((uint32) size) == size);
-    istream->buffer_len = size;
+    assert(size >= 0);
+    assert((I64) ((U32) size) == size);
+    istream->buffer_len = (U32) size;
     istream->buffer_it = 0;
 }
 
@@ -34,7 +34,7 @@ istream__refill_buffer(struct istream *istream)
     if (istream->fh == invalid_filehandle) {
         return (success = false);
     }
-    int64 size = pal_readfile(istream->fh, istream->buffer, ISTREAM_BUFFER_CACHE_SIZE);
+    I64 size = pal_readfile(istream->fh, istream->buffer, ISTREAM_CACHE_BUFFER_SIZE);
     if (size <= 0) {
         success = false;
     } else {

@@ -18,7 +18,6 @@
 #include "mem.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include "assert.h"
 
 void *
 xmalloc ( size_t size )
@@ -44,13 +43,16 @@ xrealloc ( void *ptr,
            size_t newsize )
 {
     void *result = realloc(ptr, newsize);
-    if (!result) {
+    if (!result)
+    {
         char err_msg[256];
         snprintf(err_msg, sizeof(err_msg), "MEM: Failed to reallocate %zu bytes of memory -> ERRNO", newsize);
         perror(err_msg);
     }
     return result;
 }
+
+
 
 #if __PAL_LINUX__
 # include <unistd.h>
@@ -60,14 +62,14 @@ static inline void *
 mem_sbrk(size_t size)
 {
 #if __PAL_LINUX__
-    return sbrk(size);
+    return sbrk((intptr_t) size);
 #else
     invalid_code_path("sbrk is not a valid allocation strategy for Windows platforms");
     return 0;
 #endif
 }
 
-void *
+void*
 mem_alloc( enum alloc_strategy alloc_strategy, size_t size, size_t alignment)
 {
     switch (alloc_strategy)
@@ -126,7 +128,7 @@ remap_keepAddr(void *old_addr, size_t old_size, size_t new_size)
 
 void *
 mem_realloc__release ( enum realloc_strategy realloc_strategy,
-                       void  *old_addr,
+                       ptr_t  old_addr,
                        size_t old_size,
                        size_t new_size,
                        size_t alignment )
@@ -185,7 +187,7 @@ mem_realloc__release ( enum realloc_strategy realloc_strategy,
 //   memory region.
 void *
 mem_realloc__debug ( enum realloc_strategy realloc_strategy,
-                     void  *old_addr,
+                     ptr_t  old_addr,
                      size_t old_size,
                      size_t new_size,
                      size_t alignment )
@@ -254,7 +256,7 @@ mem_realloc__debug ( enum realloc_strategy realloc_strategy,
 
 void
 mem_dealloc (enum dealloc_strategy dealloc_strategy,
-             void  **addr, // Double indirection pointer to allows us to set the pointer to null
+             ptr_t  *addr, // Double indirection pointer to allows us to set the pointer to null
              size_t  size)
 {
     switch (dealloc_strategy)
@@ -291,7 +293,7 @@ marena__can_realloc(struct marena *arena)
 
 static inline bool
 marena__realloc(struct marena *arena,
-                size_t size)
+                U32 size)
 {
     bool success = false;
     assert(marena__can_realloc(arena));
@@ -299,7 +301,7 @@ marena__realloc(struct marena *arena,
     void *buffer = mem_realloc (  arena->realloc_strategy,
                                   arena->buffer,
                                   arena->data_max_size,
-                                  size,
+                                  (size_t) size,
                                   MARENA_GUARANTEED_ALIGNMENT);
     if ( buffer )
     {
@@ -313,12 +315,27 @@ marena__realloc(struct marena *arena,
 static inline bool
 marena__grow(struct marena *arena)
 {
-    const size_t growsize = arena->data_max_size * 2;
+    U32 growsize;
+    if ((arena->data_max_size << U32_LIT(1)) < arena->data_max_size)
+    {
+        growsize = U32_MAX;
+        assert_msg(arena->data_max_size != growsize, "Assert that the arena was able to grow, eg we didn't hit the maximum memory usage");
+
+        if (growsize == arena->data_max_size)
+        {
+            /* Finished the available space that we can fit in a U32*/
+            return false;
+        }
+    }
+    else
+    {
+        growsize = arena->data_max_size << 1;
+    }    
     return marena__realloc(arena, growsize);
 }
 
 static inline void *
-marena__push_unsafe(struct marena *arena, void *data, size_t sizeof_data)
+marena__push_unsafe(struct marena *arena, void *data, U32 sizeof_data)
 {
     assert(arena->buffer && (arena->data_size != 0));
     void *dest = arena->buffer + arena->data_size;
@@ -328,7 +345,7 @@ marena__push_unsafe(struct marena *arena, void *data, size_t sizeof_data)
 }
 
 static inline mem_ref_t
-marena__push_null_data__unsafe(struct marena *arena, size_t sizeof_data, bool initialize_to_zero)
+marena__push_null_data__unsafe(struct marena *arena, U32 sizeof_data, bool initialize_to_zero)
 {
     assert(arena->buffer && (arena->data_size != 0));
     mem_ref_t result = (arena->data_size);
@@ -347,7 +364,7 @@ marena__push_byte__unsafe(struct marena *arena, uint8_t b)
     assert(arena->buffer && (arena->data_size != 0));
     mem_ref_t result = arena->data_size;
     arena->buffer[arena->data_size] = b;
-    arena->data_size += sizeof(b);
+    arena->data_size += (U32) sizeof(b);
     return result;
 }
 
@@ -358,7 +375,7 @@ marena__push_pointer__unsafe(struct marena *arena, void *pointer)
     mem_ref_t result = arena->data_size;
     void **tmp = (void **)(&arena->buffer[arena->data_size]);
     *tmp = pointer;
-    arena->data_size += sizeof(pointer);
+    arena->data_size += (U32) sizeof(pointer);
     return result;
 }
 
@@ -402,13 +419,15 @@ marena__try_grow(struct marena *arena, size_t sizeof_data)
         }
     }
 #if __DEBUG
-    else if (MEMORY_ARENA_ALWAYS_FORCE_REALLOC_AT_EVERY_PUSH & can_realloc) {
+    else if (MEMORY_ARENA_ALWAYS_FORCE_REALLOC_AT_EVERY_PUSH & can_realloc)
+    {
         // If the arena didn't really need to grow, and the macro
         //    is defined we're going to force a new grow
         return marena__realloc(arena, arena->data_max_size);
     }
 #endif
-    else {
+    else
+    {
         success = true;
     }
     return success;
@@ -422,7 +441,7 @@ struct marena
 marena_new_aux ( enum alloc_strategy alloc_strategy,
                  enum realloc_strategy realloc_strategy,
                  enum dealloc_strategy dealloc_strategy,
-                 size_t size )
+                 U32 size )
 {
     assert(size);
     struct marena result = {0};
@@ -450,7 +469,7 @@ marena_new_aux ( enum alloc_strategy alloc_strategy,
 
 
 struct marena
-marena_new( size_t size, bool buffer_may_change_addr )
+marena_new( U32 size, bool buffer_may_change_addr )
 {
     const enum alloc_strategy alloc_strategy = AllocStrategy_Mmap;
     const enum realloc_strategy realloc_strategy =  buffer_may_change_addr
@@ -468,33 +487,34 @@ marena_del(struct marena *arena)
     assert(arena);
     if ( arena )
     {
-        mem_dealloc(arena->dealloc_strategy, (void **) &(arena->buffer), arena->data_max_size);
+        mem_dealloc(arena->dealloc_strategy, &(arena->buffer), arena->data_max_size);
     }
     memclr(arena, sizeof(*arena));
 }
 
 
-static inline size_t
+static inline U32
 marena_get_extra_bytes_for_alignment(struct marena *arena,
                                      size_t sizeof_data)
 {
     assert(arena && (arena->data_size != 0));
-    const uint8_t *curr_addr = (uint8_t*) arena->buffer + arena->data_size;
-    const uint8_t *aligned_addr = (void*) ALIGN((size_t)curr_addr, sizeof_data);
+    const ptr_t curr_addr = (ptr_t) arena->buffer + arena->data_size;
+    const ptr_t aligned_addr = (ptr_t) ALIGN((size_t)curr_addr, sizeof_data);
 
-    const size_t required_bytes_for_alignment = aligned_addr - curr_addr;
+    const U32 required_bytes_for_alignment = (U32) (aligned_addr - curr_addr);
     return required_bytes_for_alignment;
 }
 
 mem_ref_t
-marena_push(struct marena *arena, void *data, size_t sizeof_data)
+marena_push(struct marena *arena, void *data, U32 sizeof_data)
 {
     assert(arena && (arena->data_size != 0));
     assert(data);
     mem_ref_t result = 0;
-    const size_t required_bytes_for_alignment = marena_get_extra_bytes_for_alignment(arena, sizeof_data);
+    const U32 required_bytes_for_alignment = marena_get_extra_bytes_for_alignment(arena, sizeof_data);
 
-    if (marena__try_grow(arena, sizeof_data + required_bytes_for_alignment)) {
+    if (marena__try_grow(arena, sizeof_data + required_bytes_for_alignment))
+    {
 # if MEMORY_LAYER_DEBUG_CODE
         const bool initialize_alignment_bytes = true;
 # else
@@ -509,7 +529,7 @@ marena_push(struct marena *arena, void *data, size_t sizeof_data)
 }
 
 mem_ref_t
-marena_push_null_data (struct marena *arena, size_t sizeof_data, bool initialize_to_zero)
+marena_push_null_data (struct marena *arena, U32 sizeof_data, bool initialize_to_zero)
 {
     assert(arena && (arena->data_size != 0));
     mem_ref_t result = 0;
@@ -534,7 +554,8 @@ marena_push_byte   (struct marena *arena, byte_t b)
 
     mem_ref_t result = 0;
 
-    if (marena__try_grow(arena, sizeof(b))) {
+    if (marena__try_grow(arena, sizeof(b)))
+    {
         result = marena__push_byte__unsafe(arena, b);
     }
 
@@ -547,7 +568,8 @@ marena_push_char   (struct marena *arena, char c)
     assert(arena && (arena->data_size != 0));
     mem_ref_t result = 0;
 
-    if (marena__try_grow(arena, sizeof(c))) {
+    if (marena__try_grow(arena, sizeof(c)))
+    {
         result = marena__push_char__unsafe(arena, c);
     }
 
@@ -561,7 +583,8 @@ marena_push_pointer   (struct marena *arena, void *pointer)
     assert(arena && (arena->data_size != 0));
     mem_ref_t result = 0;
 
-    if (marena__try_grow(arena, sizeof(pointer))) {
+    if (marena__try_grow(arena, sizeof(pointer)))
+    {
         result = marena__push_pointer__unsafe(arena, pointer);
     }
 
@@ -569,29 +592,55 @@ marena_push_pointer   (struct marena *arena, void *pointer)
 }
 
 
+
 mem_ref_t
-marena_push_string (struct marena *arena, char *string)
+marena_push_cstring (struct marena *arena, char *string)
 {
     assert(arena && (arena->data_size != 0));
     assert(string);
-    // During pushing the buffer data may reallocate
-    //    we need to store relative addr first
 
-    // @TODO @TODO Check this, Do we need it ??
-    uint32_t initial_size = arena->data_size;
 
+    /* 
+       The way how we push C strings is very peculiar: Since
+       we need to push byte by byte until we hit the null terminator
+       the allocation may fail at any point due to memory exhaustion.
+
+       What we do:
+       1. We push only the first character and we record it's location
+       2. We keep on pushing the following c-string characters.
+          The following situations may happened:
+          1. No error ever happens we proceed to push the null terminator
+          2. If an allocation error happens the string will remained
+             on the arena malformed. We need to unwind all the previosly
+             pushed characters.
+    */
+    
     mem_ref_t result = marena_push_char(arena, string[0]);
-    if ( result ) {
+    if ( result )
+    {
         mem_ref_t temp = 0;
-        for( char *c = string + 1; *c != 0; c ++ ) {
+        for ( char *c = string + 1; *c != 0; c ++ )
+        {
             temp = marena_push_char(arena, *c);
             if ( !temp ) { break; }
         }
-        if ( *(string + 1) && temp == 0 ) {
+        if ( *(string + 1) && temp == 0 )
+        {
             // If we ever fail to push even a single character we amend
             //    all the previously pushed chars and return an invalid reference
             marena_pop_upto(arena, result);
             result = 0;
+        }
+        else
+        {
+            /* Push the null terminator */
+            temp = marena_push_char(arena, '\0');
+            if (temp == 0)
+            {
+                /* We couldn't push the null terminator: unwind */
+                marena_pop_upto(arena, result);
+                result = 0;
+            }
         }
     }
     return result;
@@ -615,7 +664,7 @@ marena_pop_upto(struct marena *arena, mem_ref_t ref)
 }
 
 void
-marena_fetch (struct marena *arena, mem_ref_t ref, void *output, size_t sizeof_elem)
+marena_fetch (struct marena *arena, mem_ref_t ref, void *output, U32 sizeof_elem)
 {
     assert(arena && (arena->data_size != 0));
     assert(ref >= MARENA_GUARANTEED_ALIGNMENT); // zero-th index is reserved

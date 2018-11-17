@@ -18,6 +18,14 @@
 #define COMPILER_H
 
 
+/* @NOTE :: IMPORTANT
+   =======================================
+
+   This file should not depend on any other file (eg it should not
+   include anything else, other than the features already provided
+   from the compiler the language, and the build system.
+ */
+
 #ifndef __PAL_WINDOWS__
 #  define __PAL_WINDOWS__ _WIN16 || _WIN32 || _WIN64
 #endif
@@ -89,6 +97,10 @@ __BEGIN_DECLS
 # define ARRAY_LEN(A)                           \
     (sizeof(A) / sizeof((A)[0]))
 #endif
+
+/* Compute the length of a c-string literal known at compile time */
+#define STRLIT_LEN(S) (ARRAY_LEN(S) - 1)
+    
 
 
 
@@ -166,6 +178,49 @@ __BEGIN_DECLS
 
 
 
+# ifndef offsetof
+#   if __GNUC__
+#     define offsetof(type, member) __builtin_offsetof (type, member)
+#   else
+#     define offsetof(type, member) ((size_t)&(((type *)0)->member))
+#   endif
+# endif
+
+
+
+
+#define STRINGIFY(x) #x
+#define __AT_SRC__ __FILE__ ":" STRINGIFY(__LINE__)
+#define CONCAT_(a, ...) a ## __VA_ARGS__
+#define CONCAT(a, ...) CONCAT_(a, __VA_ARGS__)
+/* Example of deferring */
+/* #define A() 123 */
+/* A() // Expands to 123 */
+/* DEFER(A)() // Expands to A () because it requires one more scan to fully expand */
+/* EXPAND(DEFER(A)()) // Expands to 123, because the EXPAND macro forces another scan */
+
+#define EMPTY()
+#define DEFER(id) id EMPTY()
+#define OBSTRUCT(...) __VA_ARGS__ DEFER(EMPTY)()
+#define EXPAND(...) __VA_ARGS__
+
+
+
+
+/* ===================================
+   Static Assertion 
+   =================================== */
+
+
+#ifndef DPCC_STATIC_ASSERT
+#  if __STDC_VERSION__ >= STD_C11_VERSION
+#    define DPCC_STATIC_ASSERT(cond, msg) _Static_assert((cond), msg)
+#  else
+#    define DPCC_STATIC_ASSERT(cond, msg) struct CONCAT(__dpccasrt__, __LINE__) { int a[!cond ? -1 : 0]; }
+#  endif
+#endif
+
+#define static_assert DPCC_STATIC_ASSERT
 
 
 __END_DECLS

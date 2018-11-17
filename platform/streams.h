@@ -21,14 +21,13 @@
 
 __BEGIN_DECLS
 
-#define ISTREAM_BUFFER_CACHE_SIZE KILOBYTES(4)
+#define ISTREAM_CACHE_BUFFER_SIZE KILOBYTES(4)
 
 typedef struct istream {
     filehandle_t fh;
-
-    byte_t  buffer[ISTREAM_BUFFER_CACHE_SIZE];
-    uint32 buffer_len;
-    uint32 buffer_it;
+    U32          buffer_len;
+    U32          buffer_it;
+    byte_t       buffer[ISTREAM_CACHE_BUFFER_SIZE];
 } istream_t;
 
 

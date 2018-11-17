@@ -102,12 +102,12 @@ sigsegv_linux_callback(int sig)
 }
 
 
-int64_t
+I64
 pal_get_page_size( void )
 {
-    static int64_t cached_page_size = 0;
+    static I64 cached_page_size = 0;
     if ( cached_page_size == 0 ) {
-        int64_t page_size = sysconf(_SC_PAGESIZE);
+        I64 page_size = sysconf(_SC_PAGESIZE);
         assert( page_size );
         cached_page_size = page_size;
         return page_size;
@@ -117,7 +117,7 @@ pal_get_page_size( void )
 }
 
 bool
-pal_sleep_ms(uint32 sleep_ms)
+pal_sleep_ms(U32 sleep_ms)
 {
     bool success = true;
     useconds_t usec = (useconds_t) sleep_ms * (useconds_t) 1000;
@@ -340,9 +340,9 @@ pal_mprotect(void *addr, size_t len, enum page_prot_flags prot)
 void*
 pal_mmap_file(char *file, void* addr, enum page_prot_flags prot, enum page_type_flags type,
               bool zeroed_page_before, size_t appended_zeroes,
-              int64_t *buffer_len ) // Output: The buffer len (eg the length of the file)
+              I64 *buffer_len ) // Output: The buffer len (eg the length of the file)
 {
-    void *result = 0x0000;
+    ptr_t *result = 0;
     filehandle_t fh = pal_openfile(file, FILE_RDWR);
     if ( fh == invalid_filehandle ) {
         return NULL;
@@ -351,8 +351,8 @@ pal_mmap_file(char *file, void* addr, enum page_prot_flags prot, enum page_type_
     struct stat fdstat;
     int st = stat(file, &fdstat);
     assert(st == 0);
-    int64_t page_size = pal_get_page_size();
-    uint8_t *zeroed_page = 0x0000;
+    I64 page_size = pal_get_page_size();
+    ptr_t zeroed_page = 0;
 
     if ( zeroed_page_before ) {
         zeroed_page = pal_mmap_aux( addr, page_size + fdstat.st_size + appended_zeroes,
@@ -509,10 +509,10 @@ pal_filetime_cmp(struct filetime *ft1,
 
 
 
-int64_t
-pal_readfile(filehandle_t file, void *buf, int64_t size_to_read)
+I64
+pal_readfile(filehandle_t file, void *buf, I64 size_to_read)
 {
-    int64_t result = read(file, buf, size_to_read);
+    I64 result = read(file, buf, size_to_read);
 #if __DEBUG
     if (result < 0)
     {
@@ -525,10 +525,10 @@ pal_readfile(filehandle_t file, void *buf, int64_t size_to_read)
 }
 
 
-int64_t
-pal_writefile(filehandle_t file, void *buf, int64_t size_to_write)
+I64
+pal_writefile(filehandle_t file, void *buf, I64 size_to_write)
 {
-    int64_t result = write(file, buf, size_to_write);
+    I64 result = write(file, buf, size_to_write);
 #if __DEBUG
     if (result < 0)
     {
@@ -655,10 +655,10 @@ pal_create_notify_instance(void)
     return inotify_init1(IN_NONBLOCK);
 }
 
-static inline uint32
+static inline U32
 notify_event_flags__convert(enum notify_event_flags flags)
 {
-    uint32 result = 0;
+    U32 result = 0;
     if (flags & NotifyEventFlags_Access) {
         result |= IN_ACCESS;
     }
@@ -701,7 +701,7 @@ notify_event_flags__convert(enum notify_event_flags flags)
 
 
 static inline enum notify_event_flags
-linux_inotify_event_mask__convert(uint32_t mask)
+linux_inotify_event_mask__convert(U32 mask)
 {
     enum notify_event_flags result = 0;
     if (mask & IN_ACCESS) {
@@ -750,7 +750,7 @@ pal_notify_start_watch_file(filehandle_t notify_instance_fh,
                             enum notify_event_flags flags)
 {
     assert(notify_instance_fh != invalid_filehandle);
-    uint32 mask = notify_event_flags__convert(flags);
+    U32 mask = notify_event_flags__convert(flags);
     filehandle_t result = inotify_add_watch(notify_instance_fh, file_path, mask);
     if (result != invalid_filehandle)
     {

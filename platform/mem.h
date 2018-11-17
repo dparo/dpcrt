@@ -63,22 +63,22 @@ enum dealloc_strategy {
 //   Usually a MemRef is implemented with a index (relative offset)
 typedef uint32 mem_ref_t;
 
-void *
+void*
 mem_alloc( enum alloc_strategy alloc_strategy,
            size_t size,
            size_t alignment );
 
-void *
+void*
 mem_realloc__release ( enum realloc_strategy realloc_strategy,
-                       void  *old_addr,
+                       ptr_t  old_addr,
                        size_t old_size,
                        size_t new_size,
                        size_t alignment );
 
 #if MEMORY_LAYER_DEBUG_CODE
-void *
+void*
 mem_realloc__debug ( enum realloc_strategy realloc_strategy,
-                     void  *old_addr,
+                     ptr_t  old_addr,
                      size_t old_size,
                      size_t new_size,
                      size_t alignment );
@@ -97,7 +97,7 @@ mem_realloc__debug ( enum realloc_strategy realloc_strategy,
 #if 0
 void *
 mem_realloc ( enum realloc_strategy realloc_strategy,
-              void *addr,
+              ptr_t  addr,
               size_t old_size,
               size_t new_size,
               size_t alignment);
@@ -105,7 +105,7 @@ mem_realloc ( enum realloc_strategy realloc_strategy,
 
 void
 mem_dealloc (enum dealloc_strategy dealloc_strategy,
-             void  **addr,
+             ptr_t  *addr,
              size_t  buffer_size);
 
 
@@ -118,13 +118,13 @@ void*
 xrealloc (void *ptr, size_t newsize );
 
 typedef struct marena {
-    uint32_t              data_size;
-    uint32_t              data_max_size;
+    U32                   data_size;
+    U32                   data_max_size;
     enum alloc_strategy   alloc_strategy;
     enum realloc_strategy realloc_strategy;
     enum dealloc_strategy dealloc_strategy;
 
-    uint8 *buffer;
+    ptr_t buffer;
 } marena_t;
 
 
@@ -134,17 +134,17 @@ typedef struct marena {
 struct marena  marena_new_aux          ( enum alloc_strategy alloc_strategy,
                                          enum realloc_strategy realloc_strategy,
                                          enum dealloc_strategy dealloc_strategy,
-                                         size_t size );
-struct marena    marena_new            ( size_t size, bool may_grow );
+                                         U32 size );
+struct marena    marena_new            ( U32 size, bool may_grow );
 void             marena_del            ( struct marena *arena );
-mem_ref_t        marena_push           ( struct marena *arena, void *data, size_t sizeof_data );
-mem_ref_t        marena_push_null_data ( struct marena *arena, size_t sizeof_data, bool initialize_to_zero );
+mem_ref_t        marena_push           ( struct marena *arena, void *data, U32 sizeof_data );
+mem_ref_t        marena_push_null_data ( struct marena *arena, U32 sizeof_data, bool initialize_to_zero );
 mem_ref_t        marena_push_byte      ( struct marena *arena, byte_t b );
 mem_ref_t        marena_push_char      ( struct marena *arena, char c );
 mem_ref_t        marena_push_pointer   ( struct marena *arena, void *pointer );
-mem_ref_t        marena_push_string    ( struct marena *arena, char *string );
+mem_ref_t        marena_push_cstring   ( struct marena *arena, char *string );
 void             marena_pop_upto       ( struct marena *arena, mem_ref_t ref );
-void             marena_fetch          ( struct marena *arena, mem_ref_t ref, void *output, size_t sizeof_elem );
+void             marena_fetch          ( struct marena *arena, mem_ref_t ref, void *output, U32 sizeof_elem );
 void             marena_clear          ( struct marena *arena );
 
 static inline void *

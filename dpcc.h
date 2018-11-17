@@ -17,6 +17,7 @@
 #ifndef DPCC_H
 #define DPCC_H
 
+#include "compiler.h"
 #include "types.h"
 #include "utils.h"
 #include "pal.h"

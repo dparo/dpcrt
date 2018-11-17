@@ -37,6 +37,8 @@ add_library(
 
   STATIC
 
+  utils/types.c
+
   utils/hash.c
   utils/math-utils.c
 

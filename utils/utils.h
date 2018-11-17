@@ -17,13 +17,11 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-
+#include "../build_config.h"
+#include "compiler.h"
+#include "types.h"
 #include <errno.h>
 #include <string.h>
-#include "../build_config.h"
-#include "types.h"
-#include "compiler.h"
-
 
 __BEGIN_DECLS
 
@@ -33,25 +31,6 @@ __BEGIN_DECLS
 
 
 #define cast(T, expr) (T) (expr)
-
-#define STRINGIFY(x) #x
-#define __AT_SRC__ __FILE__ ":" STRINGIFY(__LINE__)
-
-#define CONCAT_(a, ...) a ## __VA_ARGS__
-#define CONCAT(a, ...) CONCAT_(a, __VA_ARGS__)
-
-/* Example of deferring */
-/* #define A() 123 */
-/* A() // Expands to 123 */
-/* DEFER(A)() // Expands to A () because it requires one more scan to fully expand */
-/* EXPAND(DEFER(A)()) // Expands to 123, because the EXPAND macro forces another scan */
-
-#define EMPTY()
-#define DEFER(id) id EMPTY()
-#define OBSTRUCT(...) __VA_ARGS__ DEFER(EMPTY)()
-#define EXPAND(...) __VA_ARGS__
-
-
 
 #if defined __DEBUG
 /* Note keep this in one liner to make the __LINE__ macro expansion work */
@@ -110,14 +89,6 @@ __BEGIN_DECLS
 #define IS_POW2(x) (((x) & ((x) - 1)) == 0)
 
 
-
-# ifndef offsetof
-#   if __GNUC__
-#     define offsetof(type, member) __builtin_offsetof (type, member)
-#   else
-#     define offsetof(type, member) ((size_t)&(((type *)0)->member))
-#   endif
-# endif
 
 #define memclr(SRC, SIZE)                       \
     (memset((SRC), 0, (SIZE)))

@@ -120,12 +120,12 @@ pal_print_stack_trace(void);
 int
 pal_init(void);
 
-int64_t
+I64
 pal_get_page_size(void);
 
 
 bool
-pal_sleep_ms(uint32 sleep_ms);
+pal_sleep_ms(U32 sleep_ms);
 
 /* ############## */
 /* File */
@@ -136,11 +136,11 @@ pal_openfile(char *path, enum open_file_flags flags);
 int
 pal_closefile(filehandle_t fh);
 
-int64_t
-pal_readfile(filehandle_t file, void *buf, int64_t size_to_read);
+I64
+pal_readfile(filehandle_t file, void *buf, I64 size_to_read);
 
-int64_t
-pal_writefile(filehandle_t file, void *buf, int64_t size_to_write);
+I64
+pal_writefile(filehandle_t file, void *buf, I64 size_to_write);
 
 /* ########### */
 /* Proc */
@@ -201,7 +201,7 @@ pal_filetime_cmp(struct filetime *ft1,
 void*
 pal_mmap_file(char *file, void* addr, enum page_prot_flags prot, enum page_type_flags type,
               bool zeroed_page_before, size_t appended_zeroes,
-              int64_t *buffer_len );
+              I64 *buffer_len );
 void*
 pal_mmap_memory( void* addr, size_t size, enum page_prot_flags prot, enum page_type_flags type );
 
@@ -299,7 +299,7 @@ __inline__ static void trap_instruction(void)
     __asm__ volatile("int $0x03");
 }
 __attribute__((gnu_inline, always_inline))
-__inline__ static void __debug_break(char* file, int32_t line)
+__inline__ static void __debug_break(char* file, int line)
 {
     fprintf(stderr, "\n\n\nCall to debug_break || file: %s || line: %d\n", file, line);
     fprintf(stderr, "Previous value of errno: %d\n", errno);
@@ -316,14 +316,9 @@ __inline__ static void __debug_break(char* file, int32_t line)
 #endif
 
 
-#define log_message(...)        do { fprintf(stderr, __VA_ARGS__); } while (0)
-#define dbglog(...)             do { fprintf(stderr, __VA_ARGS__); } while (0)
-
-
-
 #undef assert
 #undef assert_msg
-#undef static_assert
+
 
 #if __DEBUG
 #    define assert_msg(X, ...)                  \
@@ -345,14 +340,6 @@ __inline__ static void __debug_break(char* file, int32_t line)
     } while(0)
 
 #    define assert(X) do { } while(0)
-#endif
-
-#ifndef static_assert
-# if __STDC_VERSION__ >= STD_C11_VERSION
-#  define static_assert(cond, msg) _Static_assert((cond), msg)
-# else
-#  define static_assert(cond, msg) struct CONCAT(___static_assertion___, __LINE__ ) { int ___compile_time_assertion_failed___[!cond ? -1 : 0]; }
-# endif
 #endif
 
 
