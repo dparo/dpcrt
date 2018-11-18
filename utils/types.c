@@ -1,3 +1,24 @@
+/*
+ * Copyright (C) 2018  Davide Paro
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
 #include "types.h"
 
 
@@ -7,21 +28,21 @@
 static_assert(sizeof(unsigned char) == 1, "unsigned char should be `1 byte` big in this platform.");
 
 
-static_assert(sizeof(ptr_t)  == sizeof(void*), "");
-static_assert(sizeof(size_t) == sizeof(void*), "");
-static_assert(sizeof(ssize_t) == sizeof(size_t), "Those 2 should be equal in size but differ in signedness");
+static_assert(sizeof(ptr_t)    == sizeof(void*), "");
+static_assert(sizeof(size_t)   == sizeof(void*), "");
+static_assert(sizeof(ssize_t)  == sizeof(size_t), "Those 2 should be equal in size but differ in signedness");
 static_assert(sizeof(intptr_t) == sizeof(size_t), "Those 2 should be equal in size but differ in signedness");
 
 
 static_assert(sizeof(byte_t) == 1, "");
-static_assert(sizeof(I8)  == 1, "");
-static_assert(sizeof(U8)  == 1, "");
-static_assert(sizeof(I16) == 2, "");
-static_assert(sizeof(U16) == 2, "");
-static_assert(sizeof(I32) == 4, "");
-static_assert(sizeof(U32) == 4, "");
-static_assert(sizeof(I64) == 8, "");
-static_assert(sizeof(U64) == 8, "");
+static_assert(sizeof(I8)     == 1, "");
+static_assert(sizeof(U8)     == 1, "");
+static_assert(sizeof(I16)    == 2, "");
+static_assert(sizeof(U16)    == 2, "");
+static_assert(sizeof(I32)    == 4, "");
+static_assert(sizeof(U32)    == 4, "");
+static_assert(sizeof(I64)    == 8, "");
+static_assert(sizeof(U64)    == 8, "");
 
 
 // Check That types has the correct number of bytes for this architecture

@@ -1,19 +1,24 @@
 /*
  * Copyright (C) 2018  Davide Paro
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
+
 #ifndef TYPES_H
 #define TYPES_H
 
@@ -21,6 +26,9 @@
 
 __BEGIN_DECLS
 
+
+
+/* Bool type */
 #ifndef __cplusplus
 #  define true 1
 #  define false 0
@@ -29,13 +37,15 @@ __BEGIN_DECLS
 
 #  define __bool_true_false_are_defined 1
 #endif
+/* ------------------ */
 
 
+
+/* Standard generic types */
 typedef unsigned long int  size_t;
 typedef signed long int    ssize_t;
 typedef signed long int    ptrdiff_t;
 typedef signed long int    intptr_t;
-
 
 typedef unsigned char*     ptr_t;
 typedef float              float32;
@@ -68,6 +78,7 @@ typedef int32  I32;
 typedef uint32 U32;
 typedef int64  I64;
 typedef uint64 U64;
+/* ----------------------- */
 
 
 /* LIMITS rappresentations of types.
@@ -104,7 +115,7 @@ typedef uint64 U64;
 
 /* Very simple c-string wrappers with len precomputed, and a buffer size associated.
    The data points to a valid c-string and it is _GUARANTEED_ to be NULL-TERMINATED.
-   
+
    This string can store up to 2 GigaBytes of content. */
 
 typedef struct Str32
@@ -114,6 +125,16 @@ typedef struct Str32
     char *data;
 } Str32;
 
+/* PStr32 :: stands for `PackedStr32`
+   In the packed version of `Str32`, the string payload follows immediately
+   the header (eg it does not live in a seperate place in memory) */
+typedef struct PStr32
+{
+    I32 bufsize;
+    I32 len;
+    char data[];
+} PStr32;
+
 #define STR32_LIT(S)                            \
     ((Str32) {                                  \
         (I32) ARRAY_LEN(S),                     \
@@ -121,13 +142,20 @@ typedef struct Str32
             (char*) S                           \
             })
 
+#define PSTR32_LIT(S) \
+    ((PStr32) {                                  \
+        (I32) ARRAY_LEN(S),                      \
+            (I32) STRLIT_LEN(S),                 \
+            S                                    \
+            })
+
 
 #define cstr_to_str32(S) __cstr_to_str32__(S, strlen(S))
 static inline Str32
 __cstr_to_str32__(char *s, size_t str_len)
 {
-    I32 clamped_str_len = (I32) (str_len & I32_MAX);
-    Str32 result = { clamped_str_len, clamped_str_len, s};
+    I32 clamped_str_len = (I32) (str_len & (size_t) I32_MAX);
+    Str32 result = { clamped_str_len, clamped_str_len, s };
     return result;
 }
 
@@ -141,6 +169,8 @@ typedef long int time_t;
 #  endif
 #endif
 
+
+#if 0
 struct tm
 {
     int tm_sec;                 /* Seconds.	[0-60] (1 leap second) */
@@ -162,7 +192,7 @@ struct tm
     const char *___padding2___;  /* Timezone abbreviation.  */
 # endif
 };
-
+#endif
 
 
 __END_DECLS
