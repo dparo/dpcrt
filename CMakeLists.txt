@@ -41,12 +41,13 @@ add_library(
 
   STATIC
 
-  utils/types.c
+  types.c
 
-  utils/hash.c
-  utils/math-utils.c
+  hash.c
+  math/statistics.c
 
-  utils/mem_layout.c
+  mem_layout.c
+  
   platform/mem.c
   platform/streams.c
 
@@ -125,7 +126,7 @@ target_link_libraries(dpcc
 endif()
 
 target_include_directories(dpcc PUBLIC
-  ./ platform utils)
+  ./ platform ./math ./memory)
 
 target_include_directories(dpcc PRIVATE
   ./)

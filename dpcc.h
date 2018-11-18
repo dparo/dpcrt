@@ -28,6 +28,8 @@
 #include "pal.h"
 #include "mem.h"
 
+#include "dpcc_math.h"
+
 __BEGIN_DECLS
 
 

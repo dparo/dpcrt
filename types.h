@@ -23,10 +23,9 @@
 #define TYPES_H
 
 #include "compiler.h"
-#include <stdint.h>
+
+
 __BEGIN_DECLS
-
-
 
 /* Bool type */
 #ifndef __cplusplus
