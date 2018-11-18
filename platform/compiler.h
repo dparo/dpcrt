@@ -89,6 +89,13 @@ __BEGIN_DECLS
 #define STD_C11_VERSION   201112L
 #define STD_C17_VERSION   201710L
 
+#if __STDC_VERSION__ < STD_C99_VERSION
+#   define restrict
+#   define __restrict
+#else
+#   define __restrict restrict
+#endif
+
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 
@@ -115,9 +122,18 @@ __BEGIN_DECLS
 #  define CONSTRUCT(_func) static void _func (void) __attribute__((constructor));
 #  define DESTRUCT(_func) static void _func (void) __attribute__((destructor));
 #  define DEPRECATED __attribute__((deprecated))
+
 #  define ATTRIB_PURE __attribute__((pure))
 #  define ATTRIB_CONST __attribute__((const))
 #  define ATTRIB_FUNCTIONAL ATTRIB_CONST
+
+
+#  define ATTRIB_NONNULL(...)  __attribute__((nonnull(__VA_ARGS__)))
+#  define ATTRIB_MALLOC __attribute__((malloc))
+#  define ATTRIB_NODISCARD __attribute__((warn_unused_result)) /* The return value from the function should be checked */
+#  define ATTRIB_LEAF      __attribute__((leaf))
+#  define ATTRIB_NOTHROW   __attribute__((nothrow))
+
 #elif defined (_MSC_VER) && (_MSC_VER >= 1500)
 #  define CONSTRUCT(_func)                                              \
     static void _func(void);                                            \
@@ -130,9 +146,23 @@ __BEGIN_DECLS
     static int _func ## _constructor(void) { atexit (_func); return 0; } \
     __pragma(section(".CRT$XCU",read))                                  \
         __declspec(allocate(".CRT$XCU")) static int (* _array ## _func)(void) = _func ## _constructor;
+
+
+/* @TODO :: Some of these defines expands to `GCC` builtins. Those are probably
+   not going to work under `MSVC`. Check if `MSVC` provides something similar
+   for those attribs and make the macro expand to the correct text.
+   If the equivalent attribute under `MSVC` just make the macro expand to `EMPTY` */
+#  define ATTRIB_NONNULL(...)  __attribute__((nonnull(__VA_ARGS__)))
+#  define ATTRIB_MALLOC __attribute__((malloc))
+#  define ATTRIB_NODISCARD _Check_return_
+#  define ATTRIB_LEAF      __attribute__((leaf))
+#  define ATTRIB_NOTHROW   __declspec(nothrow)
+
 #  define ATTRIB_PURE
 #  define ATTRIB_CONST
 #  define ATTRIB_FUNCTIONAL ATTRIB_CONST
+
+
 #else
 #  error "You will need constructor support for your compiler"
 #endif
