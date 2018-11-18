@@ -23,7 +23,7 @@
 #define TYPES_H
 
 #include "compiler.h"
-
+#include <stdint.h>
 __BEGIN_DECLS
 
 
@@ -88,27 +88,55 @@ typedef uint64 U64;
    sure that we get the correct size for the suffices that we use.
    If we want to support more compiler/architectures, those literals
    should be wrapped with a `#if` preprocessor macros */
-#define I32_LIT(x) ((I32) (x))             // Example: 1234
-#define U32_LIT(x) ((U32) (CONCAT(x, U)))  // Example: 1234U
-#define I64_LIT(x) ((I64) (CONCAT(x, L)))  // Example: 1234L
-#define U64_LIT(x) ((U64) (CONCAT(x, UL))) // Example: 1234UL
+#if __PAL_ARCHITECTURE_SIZE__ == 64
+#  define  I8_LIT(x) ( (I8) (x))
+#  define  U8_LIT(x) ( (U8) (x))
+#  define I16_LIT(x) ((I16) (x))
+#  define U16_LIT(x) ((U16) (x))
+#  define I32_LIT(x) ((I32) (x))             // Example: 1234
+#  define U32_LIT(x) ((U32) (CONCAT(x, U)))  // Example: 1234U
+#  define I64_LIT(x) ((I64) (CONCAT(x, L)))  // Example: 1234L
+#  define U64_LIT(x) ((U64) (CONCAT(x, UL))) // Example: 1234UL
+#elif  __PAL_ARCHITECTURE_SIZE__ == 32
+#  define  I8_LIT(x) ( (I8) (x))
+#  define  U8_LIT(x) ( (U8) (x))
+#  define I16_LIT(x) ((I16) (x))
+#  define U16_LIT(x) ((U16) (x))
+#  define I32_LIT(x) ((I32) (x))             // Example: 1234
+#  define U32_LIT(x) ((U32) (CONCAT(x, U)))  // Example: 1234U
+#  define I64_LIT(x) ((I64) (CONCAT(x, LL)))  // Example: 1234LL
+#  define U64_LIT(x) ((U64) (CONCAT(x, ULL))) // Example: 1234ULL
+#endif
 
 
+/* Tecnically the C99 Standard defines a Hexadecimal Literal
+   to be the type of the smallest possible type that can contain it.
+   For example `0x80` is a uint8 type, while `0xfff` is a uint16 type.
 
-#define U8_MAX  ( U8_LIT(255))
-#define U16_MAX (U16_LIT(65535))
-#define U32_MAX (U32_LIT(4294967295))
-#define U64_MAX (U64_LIT(18446744073709551615))
+   Tecnically for those macros there's no need to wrap the constants
+   with a `<XX>_LIT` macro; but we want to remain conservative in the
+   case the compiler is not fully C99 STANDARD compliant.
+*/
+#define U8_MAX  ( U8_LIT(0xff))
+#define U16_MAX (U16_LIT(0xffff))
+#define U32_MAX (U32_LIT(0xfffffffff))
+#define U64_MAX (U64_LIT(0xffffffffffffffff))
 
-#define I8_MAX  ( I8_LIT(127))
-#define I16_MAX (I16_LIT(32767))
-#define I32_MAX (I32_LIT(2147483647))
-#define I64_MAX (I64_LIT(9223372036854775807))
+#define U8_MIN  ( U8_LIT(0x00))
+#define U16_MIN (U16_LIT(0x0000))
+#define U32_MIN (U32_LIT(0x00000000))
+#define U64_MIN (U64_LIT(0x0000000000000000))
 
-#define I8_MIN  ( I8_LIT(-128))
-#define I16_MIN (I16_LIT(-32768))
-#define I32_MIN (I32_LIT(-2147483648))
-#define I64_MIN (I64_LIT(-9223372036854775808))
+
+#define I8_MAX  ( I8_LIT(0x7f))
+#define I16_MAX (I16_LIT(0x7fff))
+#define I32_MAX (I32_LIT(0x7fffffff))
+#define I64_MAX (I64_LIT(0x7fffffffffffffff))
+
+#define I8_MIN  ( I8_LIT(0x80))
+#define I16_MIN (I16_LIT(0x8000))
+#define I32_MIN (I32_LIT(0x80000000))
+#define I64_MIN (I64_LIT(0x8000000000000000))
 
 
 

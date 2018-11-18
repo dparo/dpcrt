@@ -46,9 +46,31 @@ static_assert(sizeof(U64)    == 8, "");
 
 
 // Check That types has the correct number of bytes for this architecture
-static_assert(sizeof(I32_LIT(1234))  == 4, "Required for I32 max");
-static_assert(sizeof(U32_LIT(1234))  == 4, "Required for U32 max");
-static_assert(sizeof(I64_LIT(1234))  == 8, "Required for I64 max");
-static_assert(sizeof(U64_LIT(1234))  == 8, "Required for U64 max");
+static_assert(sizeof( I8_LIT(123456)) == 1, "Required for I8 max");
+static_assert(sizeof(I16_LIT(123456)) == 2, "Required for I16 max");
+static_assert(sizeof(I32_LIT(123456)) == 4, "Required for I32 max");
+static_assert(sizeof(I64_LIT(123456)) == 8, "Required for I64 max");
+
+static_assert(sizeof( U8_LIT(123456)) == 1, "Required for U8 max");
+static_assert(sizeof(U16_LIT(123456)) == 2, "Required for U16 max");
+static_assert(sizeof(U32_LIT(123456)) == 4, "Required for U32 max");
+static_assert(sizeof(U64_LIT(123456)) == 8, "Required for U64 max");
+
+
+static_assert(sizeof( U8_MAX) == 1, "");
+static_assert(sizeof(U16_MAX) == 2, "");
+static_assert(sizeof(U32_MAX) == 4, "");
+static_assert(sizeof(U64_MAX) == 8, "");
+
+static_assert(sizeof( I8_MIN) == 1, "");
+static_assert(sizeof( I8_MAX) == 1, "");
+static_assert(sizeof(I16_MIN) == 2, "");
+static_assert(sizeof(I16_MAX) == 2, "");
+static_assert(sizeof(I32_MIN) == 4, "");
+static_assert(sizeof(I32_MAX) == 4, "");
+static_assert(sizeof(I64_MIN) == 8, "");
+static_assert(sizeof(I64_MAX) == 8, "");
+
+
 
 

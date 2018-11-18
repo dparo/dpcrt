@@ -31,7 +31,7 @@
 __BEGIN_DECLS
 
 #ifndef NULL
-#define NULL ((void*) 0x0)
+#  define NULL ((void*) 0x0)
 #endif
 
 
@@ -39,10 +39,10 @@ __BEGIN_DECLS
 
 #if defined __DEBUG
 /* Note keep this in one liner to make the __LINE__ macro expansion work */
-#define TEST_FUNCTION(test)                                             \
+#  define TEST_FUNCTION(test)                                           \
     static bool CONCAT(___first_time_called___, __LINE__) = false; if ( ((test) == true) && (CONCAT(___first_time_called___, __LINE__) == false) )  { CONCAT(___first_time_called___, __LINE__) = true; goto CONCAT(___exec___, __LINE__); } if (0)CONCAT(___exec___, __LINE__):
 #else
-#define TEST_FUNCTION(...)
+#  define TEST_FUNCTION(...)
 #endif
 
 
@@ -75,8 +75,8 @@ __BEGIN_DECLS
 
 
 # ifndef PAGE_SHIFT
-#    define PAGE_SHIFT      12
-#endif
+#   define PAGE_SHIFT      12
+# endif
 
 # ifndef PAGE_SIZE
 #   define PAGE_SIZE (KILOBYTES(4))
