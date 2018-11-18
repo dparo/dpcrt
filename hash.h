@@ -19,8 +19,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef HASH_H
-#define HASH_H
+#ifndef HGUARD_27b30011b22943b69d0a4062f38d2698
+#define HGUARD_27b30011b22943b69d0a4062f38d2698
 
 #include "utils.h"
 #include "types.h"
@@ -68,4 +68,4 @@ static inline uint32 adler32(ptr_t buffer, const size_t len)
 
 __END_DECLS
 
-#endif
+#endif  /* HGUARD_27b30011b22943b69d0a4062f38d2698 */

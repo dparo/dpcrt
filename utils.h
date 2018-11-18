@@ -19,8 +19,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef HGUARD_183f4851c423485faffa8b8cd1f85f24
+#define HGUARD_183f4851c423485faffa8b8cd1f85f24
 
 #include "../build_config.h"
 #include "compiler.h"
@@ -101,4 +101,4 @@ __BEGIN_DECLS
 
 __END_DECLS
 
-#endif
+#endif  /* HGUARD_183f4851c423485faffa8b8cd1f85f24 */

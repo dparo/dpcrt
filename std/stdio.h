@@ -1,5 +1,5 @@
-#ifndef STDIO_H
-#define STDIO_H
+#ifndef HGUARD_9450a2815fb5433089759d98d74dbcad
+#define HGUARD_9450a2815fb5433089759d98d74dbcad
 
 #include "utils.h"
 
@@ -12,4 +12,4 @@ struct FILE;
 
 __END_DECLS
 
-#endif
+#endif  /* HGUARD_9450a2815fb5433089759d98d74dbcad */

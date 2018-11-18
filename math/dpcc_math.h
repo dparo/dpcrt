@@ -1,5 +1,5 @@
-#ifndef DPCC_MATH_H
-#define DPCC_MATH_H
+#ifndef HGUARD_a523ca5511dd4899b58810e4e3fb4b95
+#define HGUARD_a523ca5511dd4899b58810e4e3fb4b95
 
 __BEGIN_DECLS
 
@@ -14,4 +14,4 @@ __BEGIN_DECLS
 
 __END_DECLS
 
-#endif
+#endif  /* HGUARD_a523ca5511dd4899b58810e4e3fb4b95 */

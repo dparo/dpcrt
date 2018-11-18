@@ -19,8 +19,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef DPCC_H
-#define DPCC_H
+#ifndef HGUARD_7bc04f162a704edb9ecd9b36e88dd34d
+#define HGUARD_7bc04f162a704edb9ecd9b36e88dd34d
 
 #include "compiler.h"
 #include "types.h"
@@ -35,4 +35,4 @@ __BEGIN_DECLS
 
 __END_DECLS
 
-#endif  /* DPCC_H */
+#endif  /* HGUARD_7bc04f162a704edb9ecd9b36e88dd34d */

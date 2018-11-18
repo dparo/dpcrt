@@ -19,8 +19,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef TYPES_H
-#define TYPES_H
+#ifndef HGUARD_ac8c7d54818e489096b120ef3afb4a25
+#define HGUARD_ac8c7d54818e489096b120ef3afb4a25
 
 #include "compiler.h"
 
@@ -224,4 +224,4 @@ struct tm
 
 __END_DECLS
 
-#endif
+#endif  /* HGUARD_ac8c7d54818e489096b120ef3afb4a25 */

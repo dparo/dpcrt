@@ -19,8 +19,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef STATISTICS
-#define STATISTICS
+#ifndef HGUARD_913afe5e925b492c80162770223d0e4c
+#define HGUARD_913afe5e925b492c80162770223d0e4c
 
 
 #include "utils.h"
@@ -99,4 +99,4 @@ stirling_binomial(uint32 n);
 
 __END_DECLS
 
-#endif
+#endif  /* HGUARD_913afe5e925b492c80162770223d0e4c */

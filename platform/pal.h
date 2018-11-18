@@ -19,8 +19,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef PLATFORM__PAL_H
-#define PLATFORM__PAL_H
+#ifndef HGUARD_01ef9fe4705a44d2a31a6ea3027f7dfb
+#define HGUARD_01ef9fe4705a44d2a31a6ea3027f7dfb
 
 #include "utils.h"
 #include <stdio.h>
@@ -370,4 +370,4 @@ __inline__ static void __debug_break(char* file, int line)
 
 __END_DECLS
 
-#endif  /* PLATFORM__PAL_H */
+#endif  /* HGUARD_01ef9fe4705a44d2a31a6ea3027f7dfb */

@@ -19,8 +19,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef PLATFORM__MEM_LAYER_H
-#define PLATFORM__MEM_LAYER_H
+#ifndef HGUARD_77f71620e38a4ba09d5a55b0bc707a92
+#define HGUARD_77f71620e38a4ba09d5a55b0bc707a92
 
 #include "utils.h"
 #include <stdint.h>
@@ -176,4 +176,4 @@ marena_unpack_ref__unsafe(struct marena *arena, mem_ref_t ref)
 
 __END_DECLS
 
-#endif  /* PLATFORM__MEM_LAYER_H */
+#endif  /* HGUARD_77f71620e38a4ba09d5a55b0bc707a92 */

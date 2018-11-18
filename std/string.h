@@ -1,5 +1,5 @@
-#ifndef STRING_H
-#define STRING_H
+#ifndef HGUARD_c4340e2c7dcd4d22868577bdf05a9ca0
+#define HGUARD_c4340e2c7dcd4d22868577bdf05a9ca0
 
 #include "utils.h"
 
@@ -72,4 +72,4 @@ std_func_strlen (const char *__s)
 
 __END_DECLS
 
-#endif
+#endif  /* HGUARD_c4340e2c7dcd4d22868577bdf05a9ca0 */

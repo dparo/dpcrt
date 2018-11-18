@@ -1,5 +1,5 @@
-#ifndef MALLOC_H
-#define MALLOC_H
+#ifndef HGUARD_e138864469634ee39cde1436e8890ed3
+#define HGUARD_e138864469634ee39cde1436e8890ed3
 
 #include "utils.h"
 
@@ -31,4 +31,4 @@ free ( void *ptr )
 
 __END_DECLS
 
-#endif
+#endif  /* HGUARD_e138864469634ee39cde1436e8890ed3 */

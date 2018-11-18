@@ -19,8 +19,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef MEM_LAYOUT_H
-#define MEM_LAYOUT_H
+#ifndef HGUARD_eeac0bd03e2846dca1cd3fb01fa7efe1
+#define HGUARD_eeac0bd03e2846dca1cd3fb01fa7efe1
 
 
 #include <stddef.h>
@@ -59,4 +59,4 @@ typedef uint32_t packed_bool;
 
 __END_DECLS
 
-#endif
+#endif  /* HGUARD_eeac0bd03e2846dca1cd3fb01fa7efe1 */

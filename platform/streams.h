@@ -19,8 +19,10 @@
  * THE SOFTWARE.
  */
 
-#ifndef PLATFORM__STREAMS_H
-#define PLATFORM__STREAMS_H
+#ifndef HGUARD_c0ebfee833bb44829631b83fbe8d4482
+#define HGUARD_c0ebfee833bb44829631b83fbe8d4482
+
+
 #include "pal.h"
 #include "types.h"
 
@@ -78,4 +80,4 @@ istream_read_next_char(struct istream *istream, char *c) { return istream_read_n
 __END_DECLS
 
 
-#endif  /* PLATFORM__STREAMING_BUFFER_H */
+#endif  /* HGUARD_c0ebfee833bb44829631b83fbe8d4482 */
