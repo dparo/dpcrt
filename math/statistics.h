@@ -25,7 +25,7 @@
 
 #include "utils.h"
 #include "types.h"
-#include "dpcc_math.h"
+#include "dpcrt_math.h"
 
 __BEGIN_DECLS
 

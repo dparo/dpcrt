@@ -37,7 +37,7 @@ endif()
 
 
 add_library(
-  dpcc
+  dpcrt
 
   STATIC
 
@@ -62,7 +62,7 @@ elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
 endif()
 
 target_compile_definitions(
-  dpcc
+  dpcrt
 
   PUBLIC
   __PAL_ARCHITECTURE_SIZE__=${__PAL_ARCHITECTURE_SIZE__}
@@ -73,7 +73,7 @@ if(WIN32)
   if(CMAKE_CL_64)
     # Compiling for a 64 Bit Windows PLATFORM
     target_compile_definitions(
-      dpcc
+      dpcrt
       PUBLIC
       __PAL_WINDOWS__
       __PAL_WINDOWS_VERSION__=64
@@ -81,7 +81,7 @@ if(WIN32)
   else()
     # Compiling for a 32 Bit Windows PLATFORM
     target_compile_definitions(
-      dpcc
+      dpcrt
       PUBLIC
       __PAL_WINDOWS__
       __PAL_WINDOWS_VERSION__=32
@@ -90,7 +90,7 @@ if(WIN32)
 
 elseif(UNIX AND NOT APPLE)
   target_compile_definitions(
-    dpcc
+    dpcrt
     PUBLIC
     __PAL_LINUX__
 
@@ -100,7 +100,7 @@ elseif(UNIX AND NOT APPLE)
 
 else()
   target_compile_definitions(
-    dpcc
+    dpcrt
     PUBLIC
     __PAL_APPLE__
     )
@@ -108,25 +108,25 @@ else()
 endif()
 
 if(UNIX AND NOT APPLE)
-  target_sources(dpcc PRIVATE platform/pal_linux.c)
+  target_sources(dpcrt PRIVATE platform/pal_linux.c)
 elseif(WIN32)
-  target_sources(dpcc PRIVATE platform/pal_win32.c)
+  target_sources(dpcrt PRIVATE platform/pal_win32.c)
 elseif(APPLE)
-  target_sources(dpcc PRIVATE platform/pal_apple.c)
+  target_sources(dpcrt PRIVATE platform/pal_apple.c)
 else()
   message(FATAL_ERROR "Platform not supported")
 endif()
 
-target_link_libraries(dpcc
+target_link_libraries(dpcrt
   PUBLIC -lm)
 
 if (UNIX AND NOT APPLE)
-target_link_libraries(dpcc
+target_link_libraries(dpcrt
   PRIVATE -ldl)
 endif()
 
-target_include_directories(dpcc PUBLIC
+target_include_directories(dpcrt PUBLIC
   ./ platform ./math ./memory)
 
-target_include_directories(dpcc PRIVATE
+target_include_directories(dpcrt PRIVATE
   ./)

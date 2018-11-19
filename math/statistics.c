@@ -20,7 +20,7 @@
  */
 
 #include "statistics.h"
-#include <dpcc_math.h>
+#include <dpcrt_math.h>
 #include <math.h>
 
 F32

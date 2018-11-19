@@ -28,7 +28,7 @@
 #include "pal.h"
 #include "mem.h"
 
-#include "dpcc_math.h"
+#include "dpcrt_math.h"
 
 __BEGIN_DECLS
 

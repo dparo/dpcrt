@@ -229,15 +229,15 @@ __BEGIN_DECLS
    =================================== */
 
 
-#ifndef DPCC_STATIC_ASSERT
+#ifndef DPCRT_STATIC_ASSERT
 #  if __STDC_VERSION__ >= STD_C11_VERSION
-#    define DPCC_STATIC_ASSERT(cond, msg) _Static_assert((cond), msg)
+#    define DPCRT_STATIC_ASSERT(cond, msg) _Static_assert((cond), msg)
 #  else
-#    define DPCC_STATIC_ASSERT(cond, msg) struct CONCAT(__dpccasrt__, __LINE__) { int a[!cond ? -1 : 0]; }
+#    define DPCRT_STATIC_ASSERT(cond, msg) struct CONCAT(__dpcrtasrt__, __LINE__) { int a[!cond ? -1 : 0]; }
 #  endif
 #endif
 
-#define static_assert DPCC_STATIC_ASSERT
+#define static_assert DPCRT_STATIC_ASSERT
 
 
 __END_DECLS
