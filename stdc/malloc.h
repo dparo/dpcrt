@@ -24,7 +24,7 @@ extern void *
 realloc (void *ptr, size_t size)
     ATTRIB_NOTHROW ATTRIB_NODISCARD;
 
-extern void *
+extern void
 free ( void *ptr )
     ATTRIB_NOTHROW;
 

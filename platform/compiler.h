@@ -119,29 +119,28 @@ __BEGIN_DECLS
 // example CONSTRUCT(my_init)
 // void my_init(void) { ... }
 #if __GNUC__
-#  define CONSTRUCT(_func) static void _func (void) __attribute__((constructor));
-#  define DESTRUCT(_func) static void _func (void) __attribute__((destructor));
-#  define DEPRECATED __attribute__((deprecated))
-
+#  define ATTRIB_CONSTRUCT(_func) static void _func (void) __attribute__((constructor));
+#  define ATTRIB_DESTRUCT(_func) static void _func (void) __attribute__((destructor));
+#  define ATTRIB_DEPRECATED __attribute__((deprecated))
 #  define ATTRIB_PURE __attribute__((pure))
 #  define ATTRIB_CONST __attribute__((const))
 #  define ATTRIB_FUNCTIONAL ATTRIB_CONST
-
-
 #  define ATTRIB_NONNULL(...)  __attribute__((nonnull(__VA_ARGS__)))
 #  define ATTRIB_MALLOC __attribute__((malloc))
 #  define ATTRIB_NODISCARD __attribute__((warn_unused_result)) /* The return value from the function should be checked */
 #  define ATTRIB_LEAF      __attribute__((leaf))
 #  define ATTRIB_NOTHROW   __attribute__((nothrow))
+#  define ATTRIB_PRINTF(STRING_INDEX, FIRST_TO_CHECK) __attribute__ ((format(printf, (STRING_INDEX), (FIRST_TO_CHECK))))
+
 
 #elif defined (_MSC_VER) && (_MSC_VER >= 1500)
-#  define CONSTRUCT(_func)                                              \
+#  define ATTRIB_CONSTRUCT(_func)                                       \
     static void _func(void);                                            \
     static int _func ## _wrapper(void) { _func(); return 0; }           \
     __pragma(section(".CRT$XCU",read))                                  \
         __declspec(allocate(".CRT$XCU")) static int (* _array ## _func)(void) = _func ## _wrapper;
 
-#  define DESTRUCT(_func)                                               \
+#  define ATTRIB_DESTRUCT(_func)                                        \
     static void _func(void);                                            \
     static int _func ## _constructor(void) { atexit (_func); return 0; } \
     __pragma(section(".CRT$XCU",read))                                  \
@@ -157,28 +156,12 @@ __BEGIN_DECLS
 #  define ATTRIB_NODISCARD _Check_return_
 #  define ATTRIB_LEAF      __attribute__((leaf))
 #  define ATTRIB_NOTHROW   __declspec(nothrow)
-
+#  define ATTRIB_PRINTF(STRING_INDEX, FIRST_TO_CHECK) __attribute__ ((format(printf, (STRING_INDEX), (FIRST_TO_CHECK))))
 #  define ATTRIB_PURE
 #  define ATTRIB_CONST
 #  define ATTRIB_FUNCTIONAL ATTRIB_CONST
-
-
 #else
-#  error "You will need constructor support for your compiler"
-#endif
-// #################################################
-
-
-#if __GNUC__
-#   define PRINTF_STYLE(STRING_INDEX, FIRST_TO_CHECK)                   \
-    __attribute__ ((format(printf, (STRING_INDEX), (FIRST_TO_CHECK))))
-
-#   define NON_NULL_PARAM(NUM) __attribute__((nonnull (NUM)));
-
-#elif defined (_MSC_VER) && (_MSC_VER >= 1500)
-#   define PRINTF_STYLE(STRING_INDEX, FIRST_TO_CHECK)
-#else
-#error "You will need constructor support for your compiler"
+# error "Not supported platform, or need to add it yourself"
 #endif
 // #################################################
 

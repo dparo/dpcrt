@@ -41,7 +41,7 @@
 #include <sys/types.h>
 
 
-PRINTF_STYLE(1,2)
+ATTRIB_PRINTF(1,2)
 void
 fatal(char *fmt, ...)
 {
@@ -57,7 +57,7 @@ static void
 linux_print_stack_trace(void)
 {
     void *array[32];
-    size_t size;
+    int size;
 
     fprintf(stderr, "Printing stack trace: #####\n");
     // get void*'s for all entries on the stack
@@ -348,7 +348,8 @@ pal_mmap_file(char *file, void* addr, enum page_prot_flags prot, enum page_type_
 {
     ptr_t *result = 0;
     filehandle_t fh = pal_openfile(file, FILE_RDWR);
-    if ( fh == invalid_filehandle ) {
+    if ( fh == invalid_filehandle )
+    {
         return NULL;
     }
     assert(fh != invalid_filehandle);
@@ -358,7 +359,9 @@ pal_mmap_file(char *file, void* addr, enum page_prot_flags prot, enum page_type_
     I64 page_size = pal_get_page_size();
     ptr_t zeroed_page = 0;
 
-    if ( zeroed_page_before ) {
+    if ( zeroed_page_before )
+    {
+#error "Check this line about sign of the result"
         zeroed_page = pal_mmap_aux( addr, page_size + fdstat.st_size + appended_zeroes,
                                     prot, type, 0 );
         assert(zeroed_page);
@@ -366,7 +369,8 @@ pal_mmap_file(char *file, void* addr, enum page_prot_flags prot, enum page_type_
     void *newaddr = addr;
     enum page_type_flags ptype = type;
     ptype = ptype & (~PAGE_ANONYMOUS);
-    if ( zeroed_page_before ) {
+    if ( zeroed_page_before )
+    {
         newaddr = zeroed_page + page_size;
         ptype |= PAGE_FIXED;
     }
@@ -374,7 +378,8 @@ pal_mmap_file(char *file, void* addr, enum page_prot_flags prot, enum page_type_
                             prot, ptype, fh );
 
     assert(result);
-    if ( buffer_len ) {
+    if ( buffer_len )
+    {
         *buffer_len = fdstat.st_size + appended_zeroes;
     }
 

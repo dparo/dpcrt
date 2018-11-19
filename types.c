@@ -22,10 +22,11 @@
 #include "types.h"
 
 
+
 /* Use the `Ptr` typedef to avoid C strict aliasing rules and type-punning.
    The `Ptr` typedef should be defined to point to `1 byte` wide memory in order
    to make pointer arithmetic have no scale factor */
-static_assert(sizeof(unsigned char) == 1, "unsigned char should be `1 byte` big in this platform.");
+static_assert(sizeof(unsigned char) == 1, "unsigned char should be `1 byte` in this platform.");
 
 
 static_assert(sizeof(ptr_t)    == sizeof(void*), "");
@@ -46,15 +47,15 @@ static_assert(sizeof(U64)    == 8, "");
 
 
 // Check That types has the correct number of bytes for this architecture
-static_assert(sizeof( I8_LIT(123456)) == 1, "Required for I8 max");
-static_assert(sizeof(I16_LIT(123456)) == 2, "Required for I16 max");
-static_assert(sizeof(I32_LIT(123456)) == 4, "Required for I32 max");
-static_assert(sizeof(I64_LIT(123456)) == 8, "Required for I64 max");
+static_assert(sizeof( I8_LIT(123456)) == 1, "");
+static_assert(sizeof(I16_LIT(123456)) == 2, "");
+static_assert(sizeof(I32_LIT(123456)) == 4, "");
+static_assert(sizeof(I64_LIT(123456)) == 8, "");
 
-static_assert(sizeof( U8_LIT(123456)) == 1, "Required for U8 max");
-static_assert(sizeof(U16_LIT(123456)) == 2, "Required for U16 max");
-static_assert(sizeof(U32_LIT(123456)) == 4, "Required for U32 max");
-static_assert(sizeof(U64_LIT(123456)) == 8, "Required for U64 max");
+static_assert(sizeof( U8_LIT(123456)) == 1, "");
+static_assert(sizeof(U16_LIT(123456)) == 2, "");
+static_assert(sizeof(U32_LIT(123456)) == 4, "");
+static_assert(sizeof(U64_LIT(123456)) == 8, "");
 
 
 static_assert(sizeof( U8_MAX) == 1, "");
