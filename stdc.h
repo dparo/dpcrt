@@ -8,11 +8,10 @@
 
 __BEGIN_DECLS
 
-
-#include "std/malloc.h"
-#include "std/stdio.h"
-#include "std/string.h"
-#include "std/types.h"
+#include "stdc/malloc.h"
+#include "stdc/stdio.h"
+#include "stdc/string.h"
+#include "stdc/types.h"
 
 
 __END_DECLS

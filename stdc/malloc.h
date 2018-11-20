@@ -10,11 +10,9 @@ extern void *
 malloc (size_t size)
     ATTRIB_NOTHROW ATTRIB_MALLOC ATTRIB_NODISCARD;
 
-/* Allocate NMEMB elements of SIZE bytes each, all initialized to 0.  */
 extern void *
 calloc (size_t nmemb, size_t size)
     ATTRIB_NOTHROW ATTRIB_MALLOC ATTRIB_NODISCARD;
-
 
 extern void *
 valloc ( size_t size )
