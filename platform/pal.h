@@ -76,42 +76,38 @@ enum open_file_flags {
 };
 
 #if __PAL_LINUX__
-typedef int pid_t;
-typedef int   filehandle_t;
-typedef pid_t prochandle_t;
-typedef void* dll_handle_t;
+typedef int   pid_t;
+typedef int   FileHandle;
+typedef pid_t ProcHandle;
+typedef void* DllHandle;
 
-static const prochandle_t null_prochandle    = -1; /* same thing as invalid_prochandle_t, matter of taste/style */
-static const prochandle_t invalid_prochandle = -1;
-static const filehandle_t invalid_filehandle = -1;
-static const filehandle_t stdin_filehandle   = 0;
-static const filehandle_t stdout_filehandle  = 1;
-static const filehandle_t stderr_filehandle  = 2;
-static const dll_handle_t null_dll_handle = 0;
-static const dll_handle_t invalid_dll_handle = 0;
+static const ProcHandle Invalid_ProcHandle = -1;
+static const FileHandle Invalid_FileHandle = -1;
+static const FileHandle Stdin_FileHandle   = 0;
+static const FileHandle Stdout_FileHandle  = 1;
+static const FileHandle Stderr_FileHandle  = 2;
+static const DllHandle  Invalid_DllHandle = 0;
 
 
 #elif __PAL_WINDOWS__
 
 // @TODO :: Once we start having a nice windows compilation sort those typedefs out.
 
-typedef HFILE   filehandle_t;
-typedef int     prochandle_t;
-typedef HMODULE dll_handle_t;
+typedef HFILE   FileHandle;
+typedef int     ProcHandle;
+typedef HMODULE DllHandle;
 
-static const filehandle_t null_filehandle    = HFILE_ERROR; /* Same thing as Invalid_filehandle_t, matter of taste/style */
-static const filehandle_t invalid_filehandle = HFILE_ERROR;
-static const filehandle_t stdin_filehandle   = 0;
-static const filehandle_t stdout_filehandle  = 1;
-static const filehandle_t stderr_filehandle  = 2;
-static const dll_handle_t null_dll_handle = 0;
-static const dll_handle_t invalid_dll_handle = 0;
+static const ProcHandle Invalid_ProcHandle = ?????;
+static const DllHandle  Invalid_DllHandle  = 0;
+static const FileHandle Invalid_FileHandle = HFILE_ERROR;
+static const FileHandle Stdin_FileHandle   = 0;
+static const FileHandle Stdout_FileHandle  = 1;
+static const FileHandle Stderr_FileHandle  = 2;
+static const DllHandle  Invalid_DllHandle  = 0;
 #else
 # error "Platform Not Supported"
 #endif
 
-
-filehandle_t filehandle;
 
 
 void
@@ -135,68 +131,68 @@ pal_sleep_ms(U32 sleep_ms);
 /* ############## */
 /* File */
 /* ############## */
-filehandle_t
+FileHandle
 pal_openfile(char *path, enum open_file_flags flags);
 
 int
-pal_closefile(filehandle_t fh);
+pal_closefile(FileHandle fh);
 
 I64
-pal_readfile(filehandle_t file, void *buf, I64 size_to_read);
+pal_readfile(FileHandle file, void *buf, I64 size_to_read);
 
 I64
-pal_writefile(filehandle_t file, void *buf, I64 size_to_write);
+pal_writefile(FileHandle file, void *buf, I64 size_to_write);
 
 /* ########### */
 /* Proc */
 /* ########### */
 
-prochandle_t
+ProcHandle
 pal_spawnproc_sync ( char *command, int * exit_status );
 
-prochandle_t
+ProcHandle
 pal_spawnproc_async(char *command);
 
 
-prochandle_t
+ProcHandle
 pal_spawnproc_async_piped ( char *command,
-                            filehandle_t *inpipe, filehandle_t *outpipe);
+                            FileHandle *inpipe, FileHandle *outpipe);
 
 void
-pal_syncproc ( prochandle_t proc, int *status );
+pal_syncproc ( ProcHandle proc, int *status );
 
 
 int
 pal_createdir(char *path);
 
 
-typedef struct filetime
+typedef struct FileTime
 {
     time_t tv_sec;  // whole seconds (valid values are >= 0) 
     time_t tv_nsec; // nanoseconds (valid values are [0, 999999999 (0.9999.. sec)])
-} filetime_t;
+} FileTime;
 
-typedef struct stat_filetime
+typedef struct FileLastAccessInfo
 {
-    struct filetime last_access;
-    struct filetime last_modification;
-} stat_filetime_t;
+    FileTime last_access;
+    FileTime last_modification;
+} FileLastAccessInfo;
 
 bool
-pal_stat_filetime(char *filepath, struct stat_filetime *out);
+pal_get_file_last_access_info(char *filepath, FileLastAccessInfo *out);
 
 
 /* Return 1 if the difference is negative, otherwise 0. */
 int
-pal_filetime_diff(struct filetime *result,
-                  struct filetime *x,
-                  struct filetime *y);
+pal_filetime_diff(FileTime *result,
+                  FileTime *x,
+                  FileTime *y);
 
 /* This function is a more convenient wrapper around `pal_filetime_diff` 
  * which doesn't return the result of the difference */
 int
-pal_filetime_cmp(struct filetime *ft1,
-                 struct filetime *ft2);
+pal_filetime_cmp(FileTime *ft1,
+                 FileTime *ft2);
 
 
 /* ############## */
@@ -241,38 +237,38 @@ typedef struct notify_event {
     // If the the current event is valid or just empty (eg no relevant event occured)
     bool valid;
 
-    filehandle_t             fh; // The event occured for this specific filehandle
+    FileHandle             fh; // The event occured for this specific filehandle
     enum notify_event_flags  flags;
 } notify_event;
 
 // Non blocking
-filehandle_t
+FileHandle
 pal_create_notify_instance(void);
 
-filehandle_t
-pal_notify_start_watch_file(filehandle_t notify_instance_fh,
+FileHandle
+pal_notify_start_watch_file(FileHandle notify_instance_fh,
                             const char *file_path,
                             enum notify_event_flags flags);
 
 
 void
-pal_notify_end_watch_file(filehandle_t notify_instance_fh,
-                          filehandle_t watch_descriptor);
+pal_notify_end_watch_file(FileHandle notify_instance_fh,
+                          FileHandle watch_descriptor);
 
 
 bool
-pal_read_notify_event(filehandle_t notify_instance_fh,
+pal_read_notify_event(FileHandle notify_instance_fh,
                       struct notify_event *output);
 
 
-dll_handle_t
+DllHandle
 pal_dll_open(char *path);
 
 void
-pal_dll_close(dll_handle_t handle);
+pal_dll_close(DllHandle handle);
 
 void *
-pal_get_proc_addr(dll_handle_t handle,
+pal_get_proc_addr(DllHandle handle,
                   const char *symbol_name);
 
 

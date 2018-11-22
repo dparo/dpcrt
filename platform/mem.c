@@ -650,6 +650,38 @@ marena_push_cstring (struct marena *arena, char *string)
     return result;
 }
 
+mem_ref_t
+marena_push_pstr32    ( struct marena *arena, PStr32 *string )
+{
+    return marena_push(arena, string, (U32) sizeof(Str32Hdr) + (U32) string->bufsize);
+}
+
+mem_ref_t
+marena_push_str32_nodata     ( struct marena *arena, Str32 *string )
+{
+    return marena_push(arena, string, sizeof(Str32Hdr));
+}
+
+
+mem_ref_t
+marena_push_str32_withdata   ( struct marena *arena, Str32 *string )
+{
+    mem_ref_t result = marena_push(arena, string, sizeof(Str32Hdr));
+    if (result)
+    {
+        mem_ref_t temp = marena_push(arena, string->data, (U32) string->bufsize);
+        if (!temp)
+        {
+            /* Failed allocation */
+            marena_pop_upto(arena, result);
+            result = 0;
+        }
+    }
+    return result;
+}
+
+
+
 void
 marena_pop_upto(struct marena *arena, mem_ref_t ref)
 {

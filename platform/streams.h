@@ -30,12 +30,12 @@ __BEGIN_DECLS
 
 #define ISTREAM_CACHE_BUFFER_SIZE KILOBYTES(4)
 
-typedef struct istream {
-    filehandle_t fh;
+typedef struct IStream {
+    FileHandle   fh;
     U32          buffer_len;
     U32          buffer_it;
     byte_t       buffer[ISTREAM_CACHE_BUFFER_SIZE];
-} istream_t;
+} IStream;
 
 
 /* @TAGS:
@@ -51,30 +51,30 @@ while(streaming_buffer_next_Byte(&sb, &b)) {
 
 
 bool
-istream_init_from_file(struct istream *istream,
+istream_init_from_file(IStream *istream,
                        char *filepath);
 
 bool
-istream_init_from_filehandle(struct istream *istream,
-                             filehandle_t fh);
+istream_init_from_filehandle(IStream *istream,
+                             FileHandle fh);
 
 void
-istream_deinit(struct istream *istream, bool close_filehandle_automatically);
+istream_deinit(IStream *istream, bool close_filehandle_automatically);
 
 bool
-istream_peek_byte(struct istream *istream, byte_t *b);
+istream_peek_byte(IStream *istream, byte_t *b);
 
 
 static inline bool
-istream_peek_char(struct istream *istream, char *c) { return istream_peek_byte(istream, (byte_t*) c); }
+istream_peek_char(IStream *istream, char *c) { return istream_peek_byte(istream, (byte_t*) c); }
 
 
 bool
-istream_read_next_byte(struct istream *istream, byte_t *b);
+istream_read_next_byte(IStream *istream, byte_t *b);
 
 
 static inline bool
-istream_read_next_char(struct istream *istream, char *c) { return istream_read_next_byte(istream, (byte_t*) c); }
+istream_read_next_char(IStream *istream, char *c) { return istream_read_next_byte(istream, (byte_t*) c); }
 
 
 __END_DECLS

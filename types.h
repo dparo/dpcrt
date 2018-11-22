@@ -45,6 +45,25 @@ typedef unsigned long int  size_t;
 typedef signed long int    ssize_t;
 typedef signed long int    ptrdiff_t;
 typedef signed long int    intptr_t;
+typedef unsigned long int  uintptr_t;
+
+/* The C-Standard guarantess that any pointer
+   can be safely casted into an integer type
+   by resorting back to the C standard types `inptr_t`
+   and `uintptr_t`.
+
+   Even though on modern machines one tipically uses a `size_t`
+   to rappresent a pointer as an integer, this is not techically
+   true for every machine. So if you actually care
+   about being politically correct here cast the pointers to `usize`
+   and not to `size_t`.
+
+   `size_t` types are guaranteed from the C-standard to be able to
+   rappresent any possible indexing within the machine (64 bit typical) */
+typedef intptr_t   isize_t;
+typedef uintptr_t  usize_t;
+typedef isize_t    isize;
+typedef usize_t    usize;
 
 typedef unsigned char*     ptr_t;
 typedef float              float32;
@@ -139,18 +158,24 @@ typedef uint64 U64;
 
 
 
-
 /* Very simple c-string wrappers with len precomputed, and a buffer size associated.
    The data points to a valid c-string and it is _GUARANTEED_ to be NULL-TERMINATED.
 
    This string can store up to 2 GigaBytes of content. */
 
-typedef struct Str32
-{
+typedef struct Str32 {
     I32   bufsize;
     I32   len;
     char *data;
 } Str32;
+
+typedef struct Str32Hdr {
+    I32   bufsize;
+    I32   len;
+} Str32Hdr;
+
+
+typedef struct Str32Hdr Str32Hdr;
 
 /* PStr32 :: stands for `PackedStr32`
    In the packed version of `Str32`, the string payload follows immediately

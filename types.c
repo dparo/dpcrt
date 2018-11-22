@@ -75,3 +75,11 @@ static_assert(sizeof(I64_MAX) == 8, "");
 
 
 
+
+
+static_assert(offsetof(Str32Hdr, bufsize) == offsetof(Str32, bufsize), "");
+static_assert(offsetof(Str32Hdr, len)     == offsetof(Str32, len), "");
+static_assert(offsetof(Str32Hdr, bufsize) == offsetof(PStr32, bufsize), "");
+static_assert(offsetof(Str32Hdr, len)     == offsetof(PStr32, len), "");
+
+

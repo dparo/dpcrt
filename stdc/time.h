@@ -30,6 +30,29 @@ struct tm
 };
 
 
+extern char*
+strptime (const char *__restrict source,
+          const char *__restrict format,
+          struct tm *output)
+    ATTRIB_NOTHROW;
+
+extern size_t
+strftime (char *__restrict s,
+          size_t max,
+          const char *__restrict fmt,
+          const struct tm *__restrict output)
+    ATTRIB_NOTHROW;
+
+extern time_t
+timegm (struct tm *tp)
+    ATTRIB_NOTHROW;
+
+extern struct tm *
+gmtime (const time_t *time)
+    ATTRIB_NOTHROW;
+
+
+
 __END_DECLS
 
 #endif /* HGUARD_20c269e3891149538640102998c1f283 */

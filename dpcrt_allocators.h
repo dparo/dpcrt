@@ -4,12 +4,12 @@
 #include "types.h"
 #include "utils.h"
 
-#include 
+#include
 
 __BEGIN_DECLS
 
-/* Simple, easy to use for quick testing 
-   stack allocator implementation based on 
+/* Simple, easy to use for quick testing
+   stack allocator implementation based on
    `malloc`, `free`, `realloc` */
 typedef struct AllocationChunk
 {
@@ -31,6 +31,29 @@ typedef struct BufferU32
     void *data;
 } BufferU32;
 
+typedef struct MemRefHandle
+{
+    U32 offset;
+    U32 tag_metadata;
+} MemRefHandle;
+
+
+
+typedef struct SAPushContext
+{
+    B32 valid;
+    U32 pushed_memory_size;
+}  SAPushContext;
+
+typedef struct IFACE_StackAllocator
+{
+    SAPushContext (*begin) (void *self);
+    bool          (*push)  (void *self, SAPushContext *context, ptr_t data, U32 size);
+    bool          (*end)   (void *self, SAPushContext *context);
+    void          (*clear) (void *self);
+} IFACE_StackAllocator;
+
+
 
 /* @NOTE :: Recall that `mem_ref_t = 0` is reserved value
    for indicating allocation failure. Stack Allocators
@@ -47,13 +70,22 @@ typedef struct IFACE_StackAllocator
     /* Pushes a struct/object or whatever piece of memory of bytes `size` */
     mem_ref_t   (*push_data)          (void *self, void *data, U32 size);
     mem_ref_t   (*push_str32)         (void *self, Str32 str);
+    mem_ref_t   (*push_pstr32)        (void *self, PStr32 str);
     mem_ref_t   (*push_cstr)          (void *self, char *str);
+
+    /* Returns the address of the object contained at position refered
+       from the memory handle. Note that this can potentially be an
+       **unsafe** operation. In particular you shouldn't store
+       the pointer anywhere, and you should not keep the pointer
+       between `push_xxx` boundaries, since the pointer is not guaranteed
+       to remain valid. */
+    void*       (*addr_of)            (void *self, MemRefHandle mhandle);
     /* Resets the stack pointer back to position `pos`.
 
        @NOTE :: This stack allocator interface does not provide a `pop` functionality
        that just simply pops the last allocation. In order to achieve
        something like this, since a a stack allocator does not
-       contain **homogenous data** (remember this is not a stack data structure, 
+       contain **homogenous data** (remember this is not a stack data structure,
        it is a stack _ALLOCATOR_)
        a stack allocator would need to internally
        maintain another stack that keeps track of all the `mem_ref_t`
@@ -70,11 +102,11 @@ typedef struct IFACE_StackAllocator
 
 #if 0
     /* TODO :: Do we need this ?? */
-    
+
     /* Deallocates the buffer of the allocator _AND_ the allocator itself.
        After this call, calling any function from this interface
        is undefined behaviour */
-    void        (*free)               (void *self);    
+    void        (*free)               (void *self);
     bool        (*fetch)              (void *self, mem_ref_t ref, void *output, U32 size);
 #endif
 
@@ -88,7 +120,6 @@ typedef struct IFACE_StackAllocator
     U32         (*get_usage_size)     (void *self);
     void        (*fit_buffer)         (void *self);
 } IFACE_StackAllocator;
-
 
 
 /* @NOTE :: A generic allocator is literally the most generic
@@ -106,8 +137,8 @@ typedef struct IFACE_GenericAllocator
        size than the requested one, this is left to be implementation defined.
        This is usefull for allocators that may want to return (for internal reasons)
        an allocation chunk that is PAGE_ALIGNED.
-       
-       @NOTE :: the realloc function wants as a parameter the `prev_chunk` 
+
+       @NOTE :: the realloc function wants as a parameter the `prev_chunk`
        (eg the pointer to the actual memory, and how much big the memory is).
        While for example the STANDARD C `realloc` function
        does not care about the size of the previous chunk, other implementations

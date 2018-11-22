@@ -187,16 +187,16 @@ file_flags__convert(enum open_file_flags flags)
 }
 
 
-filehandle_t
+FileHandle
 pal_openfile(char *path, enum open_file_flags flags)
 {
     int linux_flags = file_flags__convert(flags);
-    filehandle_t result = open(path, linux_flags, S_IXUSR | S_IXGRP |S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    FileHandle result = open(path, linux_flags, S_IXUSR | S_IXGRP |S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     return result;
 }
 
 int
-pal_closefile(filehandle_t fh)
+pal_closefile(FileHandle fh)
 {
     // returns -1 on failure
     return close(fh);
@@ -256,7 +256,7 @@ page_type_flags__convert(enum page_type_flags type)
 // Insipired by mmap function, auxiliary functions
 //     which other specilized functions depends on
 static void*
-pal_mmap_aux( void* addr, size_t size, enum page_prot_flags prot, enum page_type_flags type, filehandle_t fh)
+pal_mmap_aux( void* addr, size_t size, enum page_prot_flags prot, enum page_type_flags type, FileHandle fh)
 {
     void *result = 0x0000;
     int linux_prot  = prot_flags__convert(prot);
@@ -280,7 +280,7 @@ pal_mmap_aux( void* addr, size_t size, enum page_prot_flags prot, enum page_type
 void*
 pal_mmap_memory( void* addr, size_t size, enum page_prot_flags prot, enum page_type_flags type )
 {
-    const filehandle_t fh = 0;
+    const FileHandle fh = 0;
     return pal_mmap_aux( addr, size, prot, type, fh );
 }
 
@@ -347,43 +347,45 @@ pal_mmap_file(char *file, void* addr, enum page_prot_flags prot, enum page_type_
               I64 *buffer_len ) // Output: The buffer len (eg the length of the file)
 {
     ptr_t *result = 0;
-    filehandle_t fh = pal_openfile(file, FILE_RDWR);
-    if ( fh == invalid_filehandle )
+    FileHandle fh = pal_openfile(file, FILE_RDWR);
+    if ( fh == Invalid_FileHandle )
     {
         return NULL;
     }
-    assert(fh != invalid_filehandle);
+    assert(fh != Invalid_FileHandle);
     struct stat fdstat;
     int st = stat(file, &fdstat);
     assert(st == 0);
-    I64 page_size = pal_get_page_size();
-    ptr_t zeroed_page = 0;
-
-    if ( zeroed_page_before )
+    if (st == 0)
     {
-#error "Check this line about sign of the result"
-        zeroed_page = pal_mmap_aux( addr, page_size + fdstat.st_size + appended_zeroes,
-                                    prot, type, 0 );
-        assert(zeroed_page);
-    }
-    void *newaddr = addr;
-    enum page_type_flags ptype = type;
-    ptype = ptype & (~PAGE_ANONYMOUS);
-    if ( zeroed_page_before )
-    {
-        newaddr = zeroed_page + page_size;
-        ptype |= PAGE_FIXED;
-    }
-    result = pal_mmap_aux ( newaddr, fdstat.st_size + appended_zeroes,
-                            prot, ptype, fh );
+        I64 page_size = pal_get_page_size();
+        ptr_t zeroed_page = 0;
 
-    assert(result);
-    if ( buffer_len )
-    {
-        *buffer_len = fdstat.st_size + appended_zeroes;
-    }
+        if ( zeroed_page_before )
+        {
+            zeroed_page = pal_mmap_aux( addr, (size_t) page_size + (size_t) fdstat.st_size + appended_zeroes,
+                                        prot, type, 0 );
+            assert(zeroed_page);
+        }
+        void *newaddr = addr;
+        enum page_type_flags ptype = type;
+        ptype = ptype & (~((U32) PAGE_ANONYMOUS));
+        if ( zeroed_page_before )
+        {
+            newaddr = zeroed_page + page_size;
+            ptype |= PAGE_FIXED;
+        }
+        result = pal_mmap_aux ( newaddr, (size_t) fdstat.st_size + appended_zeroes,
+                                prot, ptype, fh );
 
-    pal_closefile(fh);
+        assert(result);
+        if ( buffer_len )
+        {
+            *buffer_len = (I64) fdstat.st_size + (I64) appended_zeroes;
+        }
+
+        pal_closefile(fh);
+    }
     return result;
 }
 
@@ -419,7 +421,7 @@ pal_createdir(char *path )
 
 
 bool
-pal_stat_filetime(char *filepath, struct stat_filetime *out)
+pal_get_file_last_access_info(char *filepath, FileLastAccessInfo *out)
 {
     bool success = true;
     struct stat statbuf;
@@ -439,46 +441,21 @@ pal_stat_filetime(char *filepath, struct stat_filetime *out)
 }
 
 
-/* Subtract the ‘struct timeval’ values X and Y,
-   storing the result in RESULT.
-   Return 1 if the difference is negative, otherwise 0. */
-static int
-linux__struct_timeval_diff (struct timeval *result, struct timeval *x, struct timeval *y)
-{
-  /* Perform the carry for the later subtraction by updating y. */
-  if (x->tv_usec < y->tv_usec) {
-    int nsec = (y->tv_usec - x->tv_usec) / 1000000 + 1;
-    y->tv_usec -= 1000000 * nsec;
-    y->tv_sec += nsec;
-  }
-  if (x->tv_usec - y->tv_usec > 1000000) {
-    int nsec = (x->tv_usec - y->tv_usec) / 1000000;
-    y->tv_usec += 1000000 * nsec;
-    y->tv_sec -= nsec;
-  }
-
-  /* Compute the time remaining to wait.
-     tv_usec is certainly positive. */
-  result->tv_sec = x->tv_sec - y->tv_sec;
-  result->tv_usec = x->tv_usec - y->tv_usec;
-
-  /* Return 1 if result is negative. */
-  return x->tv_sec < y->tv_sec;
-}
-
 int
-pal_filetime_diff(struct filetime *result,
-                  struct filetime *x,
-                  struct filetime *y)
+pal_filetime_diff(FileTime *result,
+                  FileTime *x,
+                  FileTime *y)
 {
     /* Perform the carry for the later subtraction by updating y. */
-    if (x->tv_nsec < y->tv_nsec) {
-        int nsec = (y->tv_nsec - x->tv_nsec) / 1000000000ll + 1;
+    if (x->tv_nsec < y->tv_nsec)
+    {
+        time_t nsec = (y->tv_nsec - x->tv_nsec) / 1000000000ll + 1;
         y->tv_nsec -= 1000000 * nsec;
         y->tv_sec += nsec;
     }
-    if (x->tv_nsec - y->tv_nsec > 1000000) {
-        int nsec = (x->tv_nsec - y->tv_nsec) / 1000000000ll;
+    if (x->tv_nsec - y->tv_nsec > 1000000)
+    {
+        time_t nsec = (x->tv_nsec - y->tv_nsec) / 1000000000ll;
         y->tv_nsec += 1000000 * nsec;
         y->tv_sec -= nsec;
     }
@@ -496,10 +473,10 @@ pal_filetime_diff(struct filetime *result,
 
 
 int
-pal_filetime_cmp(struct filetime *ft1,
-                 struct filetime *ft2)
+pal_filetime_cmp(FileTime *ft1,
+                 FileTime *ft2)
 {
-    struct filetime diff;
+    FileTime diff;
 
     int result = 0;
     {
@@ -519,9 +496,9 @@ pal_filetime_cmp(struct filetime *ft1,
 
 
 I64
-pal_readfile(filehandle_t file, void *buf, I64 size_to_read)
+pal_readfile(FileHandle file, void *buf, I64 size_to_read)
 {
-    I64 result = read(file, buf, size_to_read);
+    I64 result = read(file, buf, (size_t) size_to_read);
 #if __DEBUG
     if (result < 0)
     {
@@ -535,9 +512,9 @@ pal_readfile(filehandle_t file, void *buf, I64 size_to_read)
 
 
 I64
-pal_writefile(filehandle_t file, void *buf, I64 size_to_write)
+pal_writefile(FileHandle file, void *buf, I64 size_to_write)
 {
-    I64 result = write(file, buf, size_to_write);
+    I64 result = write(file, buf, (size_t) size_to_write);
 #if __DEBUG
     if (result < 0)
     {
@@ -551,7 +528,7 @@ pal_writefile(filehandle_t file, void *buf, I64 size_to_write)
 
 
 
-prochandle_t
+ProcHandle
 pal_spawnproc_sync ( char *command, int * exit_status )
 {
     pid_t id = fork ();
@@ -561,8 +538,7 @@ pal_spawnproc_sync ( char *command, int * exit_status )
     else if ( id == 0 ) {
         // child process
         if (execl("/bin/sh", "sh", "-c", command, (char *) 0) ) {
-            // DOH Make me crash
-            *((char*)0) = 0;
+            assert(0);
         }
     }
     else  {
@@ -576,7 +552,7 @@ pal_spawnproc_sync ( char *command, int * exit_status )
 
 
 
-prochandle_t
+ProcHandle
 pal_spawnproc_async ( char * command )
 {
     pid_t id = fork ();
@@ -586,9 +562,7 @@ pal_spawnproc_async ( char * command )
     else if ( id == 0 ) {
         // child process
         if ( execl("/bin/sh", "sh", "-c", command, (char *) 0) ) {
-            // DOH Make me crash
-
-            *((char*)0) = 0;
+            assert(0);
         }
     }
     else  {
@@ -598,12 +572,12 @@ pal_spawnproc_async ( char * command )
 }
 
 
-prochandle_t
+ProcHandle
 pal_spawnproc_async_piped ( char *command,
-                            filehandle_t *inpipe, filehandle_t *outpipe)
+                            FileHandle *inpipe, FileHandle *outpipe)
 {
-    filehandle_t outpipes[2] = {0};
-    filehandle_t inpipes[2] = {0};
+    FileHandle outpipes[2] = {0};
+    FileHandle inpipes[2] = {0};
     int piperes = pipe(outpipes);
     UNUSED(piperes);
     assert(piperes == 0);
@@ -627,8 +601,7 @@ pal_spawnproc_async_piped ( char *command,
         close(outpipes[0]);
         close(outpipes[1]);
         if (execl("/bin/bash", "bash", "-c", command, (char *) 0) ) {
-            // DOH Make me crash
-            *((char*)0) = 0;
+            assert(0);
         }
     }
     else  {
@@ -650,7 +623,7 @@ pal_spawnproc_async_piped ( char *command,
 
 
 void
-pal_syncproc ( prochandle_t proc, int *status )
+pal_syncproc ( ProcHandle proc, int *status )
 {
     int local_status;
     waitpid ( proc, (status != NULL) ? status : &local_status, 0 );
@@ -658,7 +631,7 @@ pal_syncproc ( prochandle_t proc, int *status )
 
 
 
-filehandle_t
+FileHandle
 pal_create_notify_instance(void)
 {
     return inotify_init1(IN_NONBLOCK);
@@ -753,15 +726,15 @@ linux_inotify_event_mask__convert(U32 mask)
 }
 
 
-filehandle_t
-pal_notify_start_watch_file(filehandle_t notify_instance_fh,
+FileHandle
+pal_notify_start_watch_file(FileHandle notify_instance_fh,
                             const char *file_path,
                             enum notify_event_flags flags)
 {
-    assert(notify_instance_fh != invalid_filehandle);
+    assert(notify_instance_fh != Invalid_FileHandle);
     U32 mask = notify_event_flags__convert(flags);
-    filehandle_t result = inotify_add_watch(notify_instance_fh, file_path, mask);
-    if (result != invalid_filehandle)
+    FileHandle result = inotify_add_watch(notify_instance_fh, file_path, mask);
+    if (result != Invalid_FileHandle)
     {
         int r = fcntl(result, F_SETFL, fcntl(result, F_GETFL, 0) | O_NONBLOCK);
         if (r == -1)
@@ -773,19 +746,19 @@ pal_notify_start_watch_file(filehandle_t notify_instance_fh,
 }
 
 void
-pal_notify_end_watch_file(filehandle_t notify_instance_fh,
-                          filehandle_t watch_descriptor)
+pal_notify_end_watch_file(FileHandle notify_instance_fh,
+                          FileHandle watch_descriptor)
 {
 
-    assert(notify_instance_fh && notify_instance_fh != invalid_filehandle);
-    assert(watch_descriptor && watch_descriptor != invalid_filehandle);
+    assert(notify_instance_fh && notify_instance_fh != Invalid_FileHandle);
+    assert(watch_descriptor && watch_descriptor != Invalid_FileHandle);
     inotify_rm_watch(notify_instance_fh, watch_descriptor);
 }
 
 
 
 bool
-pal_read_notify_event(filehandle_t notify_instance_fh,
+pal_read_notify_event(FileHandle notify_instance_fh,
                       struct notify_event *output)
 {
     bool success = true;
@@ -813,29 +786,29 @@ pal_read_notify_event(filehandle_t notify_instance_fh,
 
 
 
-dll_handle_t
+DllHandle
 pal_dll_open(char *path)
 {
-    dll_handle_t result = 0;
+    DllHandle result = 0;
     result = dlopen(path, RTLD_NOW | RTLD_LOCAL);
     return result;
 }
 
 void
-pal_dll_close(dll_handle_t handle)
+pal_dll_close(DllHandle handle)
 {
-    assert(handle != invalid_dll_handle);
+    assert(handle != Invalid_DllHandle);
     int dlres = dlclose(handle);
     (void) dlres;
     assert(dlres == 0);
 }
 
 void *
-pal_get_proc_addr(dll_handle_t handle,
+pal_get_proc_addr(DllHandle handle,
                   const char *symbol_name)
 {
     void *result = NULL;
-    assert(handle != invalid_dll_handle);
+    assert(handle != Invalid_DllHandle);
     result = dlsym(handle, symbol_name);
     return result;
 }

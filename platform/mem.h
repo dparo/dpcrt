@@ -66,7 +66,7 @@ enum dealloc_strategy {
 //  to something usefull. Implementations of memory allocators making use of this
 //  `MemRef` should skip 1 byte after the creation in order to reserve the zero-eth offset.
 //   Usually a MemRef is implemented with a index (relative offset)
-typedef uint32 mem_ref_t;
+typedef U32 mem_ref_t;
 
 void*
 mem_alloc( enum alloc_strategy alloc_strategy,
@@ -148,6 +148,14 @@ mem_ref_t        marena_push_byte      ( struct marena *arena, byte_t b );
 mem_ref_t        marena_push_char      ( struct marena *arena, char c );
 mem_ref_t        marena_push_pointer   ( struct marena *arena, void *pointer );
 mem_ref_t        marena_push_cstring   ( struct marena *arena, char *string );
+mem_ref_t        marena_push_pstr32    ( struct marena *arena, PStr32 *string );
+/* This function pushes an `Str32` preamble header, eg the payload (or content) of the
+   actual string will remain where it is pointed by the `data` member field */
+mem_ref_t        marena_push_str32_nodata     ( struct marena *arena, Str32 *string );
+/* This function pushes an `Str32` preamble header __AND ALSO__ the actual payload (or content) of the
+   string. The content will follow immediately after the string. When a `Str32` is pushed to
+   the stack allocator it IMPLICETELY BECOME A PACKED STRING `PStr32` */
+mem_ref_t        marena_push_str32_withdata   ( struct marena *arena, Str32 *string );
 void             marena_pop_upto       ( struct marena *arena, mem_ref_t ref );
 void             marena_fetch          ( struct marena *arena, mem_ref_t ref, void *output, U32 sizeof_elem );
 void             marena_clear          ( struct marena *arena );

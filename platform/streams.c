@@ -23,7 +23,7 @@
 #include "pal.h"
 
 static void
-istream__reset_buffer(struct istream *istream,
+istream__reset_buffer(IStream *istream,
                       I64 size)
 {
     assert(size >= 0);
@@ -33,10 +33,10 @@ istream__reset_buffer(struct istream *istream,
 }
 
 static bool
-istream__refill_buffer(struct istream *istream)
+istream__refill_buffer(IStream *istream)
 {
     bool success = false;
-    if (istream->fh == invalid_filehandle) {
+    if (istream->fh == Invalid_FileHandle) {
         return (success = false);
     }
     I64 size = pal_readfile(istream->fh, istream->buffer, ISTREAM_CACHE_BUFFER_SIZE);
@@ -51,7 +51,7 @@ istream__refill_buffer(struct istream *istream)
 
 
 bool
-istream_init_from_file(struct istream *istream,
+istream_init_from_file(IStream *istream,
                        char *filepath)
 {
     bool success = true;
@@ -59,7 +59,7 @@ istream_init_from_file(struct istream *istream,
 
     const enum open_file_flags flags = FILE_RDONLY;
     istream->fh = pal_openfile(filepath, flags);
-    if (istream->fh == invalid_filehandle) {
+    if (istream->fh == Invalid_FileHandle) {
         success = false;
     } else {
         success = istream__refill_buffer(istream);
@@ -70,10 +70,10 @@ istream_init_from_file(struct istream *istream,
 
 
 bool
-istream_init_from_filehandle(struct istream *istream,
-                             filehandle_t fh)
+istream_init_from_filehandle(IStream *istream,
+                             FileHandle fh)
 {
-    assert(fh != invalid_filehandle);
+    assert(fh != Invalid_FileHandle);
     memclr(istream, sizeof(*istream));
     istream->fh = fh;
     return istream__refill_buffer(istream);
@@ -81,14 +81,14 @@ istream_init_from_filehandle(struct istream *istream,
 
 
 void
-istream_deinit(struct istream *istream,
+istream_deinit(IStream *istream,
                bool close_filehandle_automatically)
 {
     if ( close_filehandle_automatically
-         && (istream->fh != invalid_filehandle
-             && istream->fh != stdin_filehandle
-             && istream->fh != stdout_filehandle
-             && istream->fh != stderr_filehandle)) {
+         && (istream->fh != Invalid_FileHandle
+             && istream->fh != Stdin_FileHandle
+             && istream->fh != Stdout_FileHandle
+             && istream->fh != Stderr_FileHandle)) {
         pal_closefile(istream->fh);
     }
     memclr(istream, sizeof(*istream));
@@ -96,7 +96,7 @@ istream_deinit(struct istream *istream,
 
 
 bool
-istream_peek_byte(struct istream *istream, byte_t *b)
+istream_peek_byte(IStream *istream, byte_t *b)
 {
     bool success = false;
 
@@ -113,7 +113,7 @@ istream_peek_byte(struct istream *istream, byte_t *b)
 
 // returns false if the advance exhausted the buffer
 static inline bool
-istream__advance(struct  istream *istream)
+istream__advance(IStream *istream)
 {
     bool exhausted = false;
     (istream->buffer_it)++;
@@ -124,7 +124,7 @@ istream__advance(struct  istream *istream)
 }
 
 static inline bool
-istream__advance_read(struct istream *istream)
+istream__advance_read(IStream *istream)
 {
     bool success = true;
     if (!istream__advance(istream)) {
@@ -134,7 +134,7 @@ istream__advance_read(struct istream *istream)
 }
 
 bool
-istream_read_next_byte(struct istream *istream, byte_t *byte)
+istream_read_next_byte(IStream *istream, byte_t *byte)
 {
     bool success = istream_peek_byte(istream, byte);
     if ( success == true ) {

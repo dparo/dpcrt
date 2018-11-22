@@ -51,6 +51,9 @@ add_library(
   platform/mem.c
   platform/streams.c
 
+
+  stdc/time.c
+
   )
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)

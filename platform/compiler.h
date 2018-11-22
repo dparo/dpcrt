@@ -118,7 +118,7 @@ __BEGIN_DECLS
 // Supports for functions that gets run before entering `main`
 // example CONSTRUCT(my_init)
 // void my_init(void) { ... }
-#if __GNUC__
+#if __GNUC__ || __clang__
 #  define ATTRIB_CONSTRUCT(_func) static void _func (void) __attribute__((constructor));
 #  define ATTRIB_DESTRUCT(_func) static void _func (void) __attribute__((destructor));
 #  define ATTRIB_DEPRECATED __attribute__((deprecated))
@@ -169,7 +169,7 @@ __BEGIN_DECLS
 // Compiler DLL Support, please refer to page        https://gcc.gnu.org/wiki/Visibility
 #if __PAL_WINDOWS__ || __CYGWIN__
   #if BUILDING_DLL
-    #if __GNUC__
+    #if __GNUC__ || __clang__
       #define DLL_GLOBAL __attribute__ ((dllexport))
     #else
       #define DLL_GLOBAL __declspec(dllexport) // Note: actually gcc seems to also supports this syntax.
@@ -196,7 +196,7 @@ __BEGIN_DECLS
 
 
 # ifndef offsetof
-#   if __GNUC__
+#   if __GNUC__ || __clang__
 #     define offsetof(type, member) __builtin_offsetof (type, member)
 #   else
 #     define offsetof(type, member) ((size_t)&(((type *)0)->member))
