@@ -72,18 +72,35 @@ linux_print_stack_trace(void)
 static void
 gdb_print_stack_trace(void)
 {
+    char name_buf[512]; 
     char pid_buf[30];
     snprintf(pid_buf, sizeof(pid_buf), "%d", getpid());
-    char name_buf[512];
-    name_buf[readlink("/proc/self/exe", name_buf, 511)]=0;
-    int child_pid = fork();
-    if (!child_pid) {
-        dup2(2,1); // redirect output to stderr
-        fprintf(stderr,"stack trace for %s pid=%s\n",name_buf,pid_buf);
-        execlp("gdb", "gdb", "--batch", "-n", "-ex", "thread", "-ex", "bt full", name_buf, pid_buf, NULL);
-        abort(); /* If gdb failed to start */
-    } else {
-        waitpid(child_pid,NULL,0);
+    ssize_t proc_self_exe_len = readlink("/proc/self/exe", name_buf, sizeof(name_buf) - 1);
+
+    if (proc_self_exe_len == -1)
+    {
+         linux_print_stack_trace();
+    }
+    else
+    {
+        name_buf[ proc_self_exe_len ] = 0;
+        int child_pid = fork();
+        if (!child_pid)
+        {
+            dup2(2, 1); // redirect output to stderr
+            fprintf(stderr,"stack trace for %s pid=%s\n", name_buf, pid_buf);
+            execlp("gdb", "gdb", "--batch", "-n", "-ex", "thread", "-ex", "bt full", name_buf, pid_buf, NULL);
+            /* execlp does not return; if, for some reason, gdb fails to start revert back to a simple stack_trace print */
+            {
+                linux_print_stack_trace();
+                abort();
+            }
+        }
+        else
+        {
+            /* If gdb started wait for it. */
+            waitpid(child_pid, NULL, 0);
+        }
     }
 }
 
@@ -498,32 +515,38 @@ pal_filetime_cmp(FileTime *ft1,
 I64
 pal_readfile(FileHandle file, void *buf, I64 size_to_read)
 {
-    I64 result = read(file, buf, (size_t) size_to_read);
+    assert(size_to_read >= 0);
+    I64 number_of_bytes_read = read(file, buf, (size_t) size_to_read);
 #if __DEBUG
-    if (result < 0)
+    if (number_of_bytes_read < 0)
     {
-            // Place a breakpoint here for convenience to see the error message if any
+        // Place a breakpoint here for convenience to see the error message if any
         char *err_message = strerror(errno);
         int breakme;
+        (void) err_message;
+        (void) breakme;
     }
 #endif
-    return result;
+    return number_of_bytes_read;
 }
 
 
 I64
 pal_writefile(FileHandle file, void *buf, I64 size_to_write)
 {
-    I64 result = write(file, buf, (size_t) size_to_write);
+    assert(size_to_write >= 0);
+    I64 number_of_bytes_written = write(file, buf, (size_t) size_to_write);
 #if __DEBUG
-    if (result < 0)
+    if (number_of_bytes_written < 0)
     {
         // Place a breakpoint here for convenience to see the error message if any
         char *err_message = strerror(errno);
         int breakme;
+        (void) err_message;
+        (void) breakme;
     }
 #endif
-    return result;
+    return number_of_bytes_written;
 }
 
 
@@ -531,17 +554,23 @@ pal_writefile(FileHandle file, void *buf, I64 size_to_write)
 ProcHandle
 pal_spawnproc_sync ( char *command, int * exit_status )
 {
-    pid_t id = fork ();
-    if ( id == - 1) {
+    pid_t id = fork();
+    if (id == - 1)
+    {
         // error on fork
+        return Invalid_ProcHandle;
     }
-    else if ( id == 0 ) {
+    else if ( id == 0 )
+    {
         // child process
-        if (execl("/bin/sh", "sh", "-c", command, (char *) 0) ) {
+        if (execl("/bin/sh", "sh", "-c", command, (char *) 0) )
+        {
             assert(0);
+            abort();
         }
     }
-    else  {
+    else
+    {
         // parent process
         // wait for child to complete
         waitpid(-1, exit_status, 0);
@@ -556,16 +585,22 @@ ProcHandle
 pal_spawnproc_async ( char * command )
 {
     pid_t id = fork ();
-    if ( id == - 1) {
+    if ( id == - 1)
+    {
         // error on fork
+        return Invalid_ProcHandle;
     }
-    else if ( id == 0 ) {
+    else if ( id == 0 )
+    {
         // child process
-        if ( execl("/bin/sh", "sh", "-c", command, (char *) 0) ) {
+        if ( execl("/bin/sh", "sh", "-c", command, (char *) 0) )
+        {
             assert(0);
+            abort();
         }
     }
-    else  {
+    else
+    {
         // parent process
     }
     return id;
@@ -584,11 +619,14 @@ pal_spawnproc_async_piped ( char *command,
     piperes = pipe(inpipes);
     assert(piperes == 0 );
     pid_t pid = fork ();
-    if ( pid == -1) {
+    if ( pid == -1)
+    {
         // error on fork
         assert_msg(0, "Failed to fork the requested proc");
+        return Invalid_ProcHandle;
     }
-    else if ( pid == 0 ) {
+    else if ( pid == 0 )
+    {
         // child process
         if (inpipe) {
             dup2(inpipes[0], STDIN_FILENO);
@@ -602,9 +640,11 @@ pal_spawnproc_async_piped ( char *command,
         close(outpipes[1]);
         if (execl("/bin/bash", "bash", "-c", command, (char *) 0) ) {
             assert(0);
+            abort();
         }
     }
-    else  {
+    else
+    {
         close(inpipes[0]);
         close(outpipes[1]);
         if (inpipe) {
@@ -625,6 +665,7 @@ pal_spawnproc_async_piped ( char *command,
 void
 pal_syncproc ( ProcHandle proc, int *status )
 {
+    assert(proc != Invalid_ProcHandle);
     int local_status;
     waitpid ( proc, (status != NULL) ? status : &local_status, 0 );
 }

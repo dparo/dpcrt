@@ -47,14 +47,12 @@ add_library(
   math/statistics.c
 
   mem_layout.c
-  
+
   platform/mem.c
   platform/streams.c
 
-
-  stdc/time.c
-
   )
+
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
   # 32 bits
@@ -133,3 +131,15 @@ target_include_directories(dpcrt PUBLIC
 
 target_include_directories(dpcrt PRIVATE
   ./)
+
+
+add_library (
+  dpcrt_stdc
+
+  STATIC
+
+
+  stdc/time.c
+  )
+
+target_link_libraries(dpcrt_stdc PUBLIC dpcrt)

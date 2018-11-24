@@ -120,20 +120,23 @@ __BEGIN_DECLS
 // void my_init(void) { ... }
 #if __GNUC__ || __clang__
 #  define ATTRIB_CONSTRUCT(_func) static void _func (void) __attribute__((constructor));
-#  define ATTRIB_DESTRUCT(_func) static void _func (void) __attribute__((destructor));
-#  define ATTRIB_DEPRECATED __attribute__((deprecated))
-#  define ATTRIB_PURE __attribute__((pure))
-#  define ATTRIB_CONST __attribute__((const))
-#  define ATTRIB_FUNCTIONAL ATTRIB_CONST
-#  define ATTRIB_NONNULL(...)  __attribute__((nonnull(__VA_ARGS__)))
-#  define ATTRIB_MALLOC __attribute__((malloc))
-#  define ATTRIB_NODISCARD __attribute__((warn_unused_result)) /* The return value from the function should be checked */
-#  define ATTRIB_LEAF      __attribute__((leaf))
-#  define ATTRIB_NOTHROW   __attribute__((nothrow))
+#  define ATTRIB_DESTRUCT(_func)  static void _func (void) __attribute__((destructor));
+#  define ATTRIB_DEPRECATED       __attribute__((deprecated))
+#  define ATTRIB_PURE             __attribute__((pure))
+#  define ATTRIB_CONST            __attribute__((const))
+#  define ATTRIB_FUNCTIONAL       ATTRIB_CONST
+#  define ATTRIB_NORETURN         __attribute__((__noreturn__))
+#  define ATTRIB_NONNULL(...)     __attribute__((nonnull(__VA_ARGS__)))
+#  define ATTRIB_MALLOC           __attribute__((malloc))
+#  define ATTRIB_NODISCARD        __attribute__((warn_unused_result)) /* The return value from the function should be checked */
+#  define ATTRIB_LEAF             __attribute__((leaf))
+#  define ATTRIB_NOTHROW          __attribute__((nothrow))
 #  define ATTRIB_PRINTF(STRING_INDEX, FIRST_TO_CHECK) __attribute__ ((format(printf, (STRING_INDEX), (FIRST_TO_CHECK))))
 
 
 #elif defined (_MSC_VER) && (_MSC_VER >= 1500)
+
+
 #  define ATTRIB_CONSTRUCT(_func)                                       \
     static void _func(void);                                            \
     static int _func ## _wrapper(void) { _func(); return 0; }           \
@@ -151,17 +154,20 @@ __BEGIN_DECLS
    not going to work under `MSVC`. Check if `MSVC` provides something similar
    for those attribs and make the macro expand to the correct text.
    If the equivalent attribute under `MSVC` just make the macro expand to `EMPTY` */
+#  define ATTRIB_NORETURN      __attribute__((__noreturn__))
 #  define ATTRIB_NONNULL(...)  __attribute__((nonnull(__VA_ARGS__)))
-#  define ATTRIB_MALLOC __attribute__((malloc))
-#  define ATTRIB_NODISCARD _Check_return_
-#  define ATTRIB_LEAF      __attribute__((leaf))
-#  define ATTRIB_NOTHROW   __declspec(nothrow)
+#  define ATTRIB_MALLOC        __attribute__((malloc))
+#  define ATTRIB_NODISCARD     _Check_return_
+#  define ATTRIB_LEAF          __attribute__((leaf))
+#  define ATTRIB_NOTHROW       __declspec(nothrow)
 #  define ATTRIB_PRINTF(STRING_INDEX, FIRST_TO_CHECK) __attribute__ ((format(printf, (STRING_INDEX), (FIRST_TO_CHECK))))
 #  define ATTRIB_PURE
 #  define ATTRIB_CONST
 #  define ATTRIB_FUNCTIONAL ATTRIB_CONST
+
+
 #else
-# error "Not supported platform, or need to add it yourself"
+#  error "Not supported platform, or need to add it yourself"
 #endif
 // #################################################
 
@@ -233,7 +239,7 @@ __BEGIN_DECLS
 #  if __STDC_VERSION__ >= STD_C11_VERSION
 #    define DPCRT_STATIC_ASSERT(cond, msg) _Static_assert((cond), msg)
 #  else
-#    define DPCRT_STATIC_ASSERT(cond, msg) struct CONCAT(__dpcrtasrt__, __LINE__) { int a[!cond ? -1 : 0]; }
+#    define DPCRT_STATIC_ASSERT(cond, msg) typedef char CONCAT(__dpcrtasrt__, __COUNTER__)[!(cond) ? -1 : 0]
 #  endif
 #endif
 

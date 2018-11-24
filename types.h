@@ -215,9 +215,9 @@ __cstr_to_str32__(char *s, size_t str_len)
 
 #if __PAL_LINUX__
 #  if __PAL_ARCHITECTURE_SIZE__ == 64
-typedef long int time_t;
+typedef long time_t;
 #  else
-#    error "Double check what's the correct time_t rappresentation for 32 bit machines."
+typedef long long time_t;
 #  endif
 #endif
 
