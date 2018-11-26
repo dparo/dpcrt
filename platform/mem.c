@@ -452,6 +452,7 @@ marena_del(struct marena *arena)
 static inline void
 assert_valid_marena(struct marena *arena)
 {
+    (void) arena;
     assert(arena && arena->buffer && (arena->data_size != 0) && arena->data_max_size);
 }
 
@@ -510,15 +511,14 @@ marena_dismiss (struct marena *arena)
 mem_ref_t
 marena_commit (struct marena *arena)
 {
-    assert_valid_marena(arena);
     mem_ref_t ref = 0;
 
+    assert_valid_marena(arena);
     assert(arena->alloc_context.staging_size >= arena->data_size);
     
     if (!arena->alloc_context.failed)
     {
         ref = arena->data_size;
-
         arena->data_size = arena->alloc_context.staging_size;
     }
 
