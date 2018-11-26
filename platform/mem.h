@@ -148,7 +148,7 @@ typedef struct marena {
 } marena_t;
 
 
-struct marena  marena_new_aux          ( enum alloc_strategy alloc_strategy,
+struct marena    marena_new_aux        ( enum alloc_strategy alloc_strategy,
                                          enum realloc_strategy realloc_strategy,
                                          enum dealloc_strategy dealloc_strategy,
                                          U32 size );
@@ -237,11 +237,30 @@ mem_ref_t marena_push_alignment      (struct marena *arena, U32 alignment);
 static inline void *
 marena_unpack_ref__unsafe(struct marena *arena, mem_ref_t ref)
 {
-    assert(ref && ref >= MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE);
     assert(arena->buffer);
     assert(arena->data_size);
-    assert(ref < arena->data_size);
-    return (void*) ((ptr_t) arena->buffer + ref);
+    assert(ref && ref >= MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE && ref < arena->data_size);
+
+
+    {
+        /* @NOTE(dparo) [Mon Nov 26 22:05:28 CET 2018]
+       
+           It is not very polite to ask to access a raw pointer
+           while in the middle of a `marena_begin` call.
+           Make sure to commit or discard before accessing raw pointers.
+           If you fill that this restriction is too severe remove this assert. 
+        */
+        assert(arena->alloc_context.staging_size == 0);
+    }
+    
+    if (ref && ref >= MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE && ref < arena->data_size)
+    {
+        return (void*) ((ptr_t) arena->buffer + ref);
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 __END_DECLS

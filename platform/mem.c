@@ -486,6 +486,21 @@ marena_pop_upto(struct marena *arena, mem_ref_t ref)
     }
 }
 
+void
+marena_fetch( struct marena *arena, mem_ref_t ref, void *output, U32 sizeof_elem )
+{
+    void *ptr = marena_unpack_ref__unsafe(arena, ref);
+    assert(ptr);
+    if (ptr)
+    {
+        memcpy(output, ptr, sizeof_elem);
+    }
+    else
+    {
+        memclr(output, sizeof_elem);
+    }
+}
+
 
 void
 marena_begin (struct marena *arena)
