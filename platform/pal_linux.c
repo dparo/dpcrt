@@ -40,16 +40,29 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
+void
+pal_exit(int status)
+{
+    _exit(status);
+}
+
+
+void
+pal_abort(void)
+{
+    abort();
+}
+
 
 ATTRIB_PRINTF(1,2)
 void
-fatal(char *fmt, ...)
+pal_fatal(char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
     va_end(ap);
-    exit(-1);
+    pal_exit(-1);
 }
 
 

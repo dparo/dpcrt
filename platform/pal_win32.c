@@ -26,15 +26,30 @@
 
 #include <windows.h>
 
-PRINTF_STYLE(1,2)
+
+
 void
-fatal(char *fmt, ...)
+pal_exit(int status)
+{
+    ExitProcess(status);
+}
+
+void
+pal_abort(void)
+{
+    abort();
+}
+
+
+ATTRIB_PRINTF(1,2)
+void
+pal_fatal(char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
     va_end(ap);
-    exit(-1);
+    pal_exit(-1);
 }
 
 

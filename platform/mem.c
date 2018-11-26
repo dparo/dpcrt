@@ -23,12 +23,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+
+
 void *
 xmalloc ( size_t size )
 {
     void *result = malloc(size);
     if ( !result )
+    {
         perror("MEM: Memory allocation failed");
+        pal_abort();
+    }
     return result;
 }
 
@@ -37,7 +42,10 @@ xcalloc ( size_t size )
 {
     void *result = calloc(1, size);
     if ( !result )
+    {
         perror("MEM: Memory allocation failed");
+        pal_abort();
+    }
     return result;
 }
 
@@ -286,46 +294,46 @@ mem_dealloc (enum dealloc_strategy dealloc_strategy,
 
 
 
-
-
 static inline bool
-marena__can_realloc(struct marena *arena)
+marena_can_realloc(struct marena *arena)
 {
     return (arena->realloc_strategy != ReallocStrategy_None);
 }
 
 
 static inline bool
-marena__realloc(struct marena *arena,
-                U32 size)
+marena_realloc(struct marena *arena,
+               U32 newsize)
 {
     bool success = false;
-    assert(marena__can_realloc(arena));
+    assert(marena_can_realloc(arena));
+
+    const size_t alignment = 128;
 
     void *buffer = mem_realloc (  arena->realloc_strategy,
                                   arena->buffer,
                                   arena->data_max_size,
-                                  (size_t) size,
-                                  MARENA_GUARANTEED_ALIGNMENT);
+                                  (size_t) newsize,
+                                  alignment);
     if ( buffer )
     {
         arena->buffer = buffer;
-        arena->data_max_size = size;
+        arena->data_max_size = newsize;
         success = true;
     }
     return success;
 }
 
 static inline bool
-marena__grow(struct marena *arena)
+marena_grow(struct marena *arena)
 {
-    U32 growsize;
+    U32 newsize;
     if ((arena->data_max_size << U32_LIT(1)) < arena->data_max_size)
     {
-        growsize = U32_MAX;
-        assert_msg(arena->data_max_size != growsize, "Assert that the arena was able to grow, eg we didn't hit the maximum memory usage");
+        newsize = U32_MAX;
+        assert_msg(arena->data_max_size != newsize, "Assert that the arena was able to grow, eg we didn't hit the maximum memory usage");
 
-        if (growsize == arena->data_max_size)
+        if (newsize == arena->data_max_size)
         {
             /* Finished the available space that we can fit in a U32*/
             return false;
@@ -333,74 +341,21 @@ marena__grow(struct marena *arena)
     }
     else
     {
-        growsize = arena->data_max_size << 1;
+        newsize = (U32) ((F32) arena->data_max_size * 1.25f) + 8 * (U32) PAGE_SIZE;
     }    
-    return marena__realloc(arena, growsize);
-}
-
-static inline void *
-marena__push_unsafe(struct marena *arena, void *data, U32 sizeof_data)
-{
-    assert(arena->buffer && (arena->data_size != 0));
-    void *dest = arena->buffer + arena->data_size;
-    memcpy(dest, data, sizeof_data);
-    arena->data_size += sizeof_data;
-    return dest;
-}
-
-static inline mem_ref_t
-marena__push_null_data__unsafe(struct marena *arena, U32 sizeof_data, bool initialize_to_zero)
-{
-    assert(arena->buffer && (arena->data_size != 0));
-    mem_ref_t result = (arena->data_size);
-
-    if (sizeof_data && initialize_to_zero)
-    {
-        memclr((uint8*) arena->buffer + arena->data_size, sizeof_data);
-    }
-    arena->data_size += sizeof_data;
-    return result;
-}    
-
-static inline mem_ref_t
-marena__push_byte__unsafe(struct marena *arena, uint8_t b)
-{
-    assert(arena->buffer && (arena->data_size != 0));
-    mem_ref_t result = arena->data_size;
-    arena->buffer[arena->data_size] = b;
-    arena->data_size += (U32) sizeof(b);
-    return result;
-}
-
-static inline mem_ref_t
-marena__push_pointer__unsafe(struct marena *arena, void *pointer)
-{
-    assert(arena->buffer && (arena->data_size != 0));
-    mem_ref_t result = arena->data_size;
-    void **tmp = (void **)(&arena->buffer[arena->data_size]);
-    *tmp = pointer;
-    arena->data_size += (U32) sizeof(pointer);
-    return result;
-}
-
-
-static inline mem_ref_t
-marena__push_char__unsafe(struct marena *arena, char c)
-{
-    assert(arena->buffer && (arena->data_size != 0));
-    return marena__push_byte__unsafe(arena, (uint8_t) c);
+    return marena_realloc(arena, newsize);
 }
 
 
 
-bool
-marena__try_grow(struct marena *arena, size_t sizeof_data)
+static bool
+marena_accomodate_for_size(struct marena *arena, U32 size)
 {
     bool success = false;
     assert(arena);
-    bool can_realloc = marena__can_realloc(arena);
+    bool can_realloc = marena_can_realloc(arena);
 
-    const size_t needed_data_size = arena->data_size + sizeof_data;
+    const size_t needed_data_size = arena->data_size + size;
 
     if ( needed_data_size >= (size_t)(arena->data_max_size))
     {
@@ -411,9 +366,8 @@ marena__try_grow(struct marena *arena, size_t sizeof_data)
         }
         else
         {
-            if (marena__grow(arena))
+            if (marena_grow(arena))
             {
-                assert(arena->data_size + sizeof_data < arena->data_max_size);
                 success = true;
             }
             else
@@ -427,7 +381,7 @@ marena__try_grow(struct marena *arena, size_t sizeof_data)
     {
         // If the arena didn't really need to grow, and the macro
         //    is defined we're going to force a new grow
-        return marena__realloc(arena, arena->data_max_size);
+        return marena_realloc(arena, arena->data_max_size);
     }
 #endif
     else
@@ -439,8 +393,6 @@ marena__try_grow(struct marena *arena, size_t sizeof_data)
 
 
 
-
-
 struct marena
 marena_new_aux ( enum alloc_strategy alloc_strategy,
                  enum realloc_strategy realloc_strategy,
@@ -448,27 +400,27 @@ marena_new_aux ( enum alloc_strategy alloc_strategy,
                  U32 size )
 {
     assert(size);
-    struct marena result = {0};
-    size = ALIGN(size, MARENA_GUARANTEED_ALIGNMENT);
-    const size_t alignment  = MARENA_GUARANTEED_ALIGNMENT;
+    struct marena marena = {0};
+    size = ALIGN(size, MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE);
+    const U32 alignment = 128;
+    size = ALIGN(size, alignment);
     const size_t alloc_size = size;
-
+    
     void *buffer = mem_alloc( alloc_strategy, alloc_size, alignment);
     
     if (buffer)
     {
-        result.buffer = buffer;
+        marena.buffer = buffer;
         // We're going to reserve the first 64 bytes
         // so we can return `mem_ref_t` (indices to the buffer)
         // that do not start at zero
-        result.data_size = 64;
-        result.data_max_size = size;
-        result.alloc_strategy = alloc_strategy;
-        result.realloc_strategy = realloc_strategy;
-        result.dealloc_strategy = dealloc_strategy;
-
+        marena.data_size = MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE;
+        marena.data_max_size = size;
+        marena.alloc_strategy = alloc_strategy;
+        marena.realloc_strategy = realloc_strategy;
+        marena.dealloc_strategy = dealloc_strategy;
     }
-    return result;
+    return marena;
 }
 
 
@@ -497,196 +449,30 @@ marena_del(struct marena *arena)
 }
 
 
-static inline U32
-marena_get_extra_bytes_for_alignment(struct marena *arena,
-                                     size_t sizeof_data)
+static inline void
+assert_valid_marena(struct marena *arena)
 {
-    assert(arena && (arena->data_size != 0));
-    const ptr_t curr_addr = (ptr_t) arena->buffer + arena->data_size;
-    const ptr_t aligned_addr = (ptr_t) ALIGN((size_t)curr_addr, sizeof_data);
-
-    const U32 required_bytes_for_alignment = (U32) (aligned_addr - curr_addr);
-    return required_bytes_for_alignment;
-}
-
-mem_ref_t
-marena_push(struct marena *arena, void *data, U32 sizeof_data)
-{
-    assert(arena && (arena->data_size != 0));
-    assert(data);
-    mem_ref_t result = 0;
-    const U32 required_bytes_for_alignment = marena_get_extra_bytes_for_alignment(arena, sizeof_data);
-
-    if (marena__try_grow(arena, sizeof_data + required_bytes_for_alignment))
-    {
-# if MEMORY_LAYER_DEBUG_CODE
-        const bool initialize_alignment_bytes = true;
-# else
-        const bool initialize_alignment_bytes = false;
-# endif
-        marena__push_null_data__unsafe(arena, required_bytes_for_alignment, initialize_alignment_bytes);
-        void *abs_addr = marena__push_unsafe(arena, data, sizeof_data);
-        result = (mem_ref_t) ((uint8_t*) abs_addr - (uint8_t*) arena->buffer);
-    }
-
-    return result;
-}
-
-mem_ref_t
-marena_push_null_data (struct marena *arena, U32 sizeof_data, bool initialize_to_zero)
-{
-    assert(arena && (arena->data_size != 0));
-    mem_ref_t result = 0;
-
-    if (marena__try_grow(arena, sizeof_data))
-    {
-#if __DEBUG
-        initialize_to_zero = true;
-#endif
-        result = marena__push_null_data__unsafe(arena, sizeof_data, initialize_to_zero);
-    }
-
-    return result;
+    assert(arena && arena->buffer && (arena->data_size != 0) && arena->data_max_size);
 }
 
 
-
-mem_ref_t
-marena_push_byte   (struct marena *arena, byte_t b)
+void
+marena_clear(struct marena *arena)
 {
-    assert(arena && (arena->data_size != 0));
-
-    mem_ref_t result = 0;
-
-    if (marena__try_grow(arena, sizeof(b)))
-    {
-        result = marena__push_byte__unsafe(arena, b);
-    }
-
-    return result;
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size == 0);
+    memclr(&arena->alloc_context, sizeof(arena->alloc_context));
+    arena->data_size = MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE;
 }
-
-mem_ref_t
-marena_push_char   (struct marena *arena, char c)
-{
-    assert(arena && (arena->data_size != 0));
-    mem_ref_t result = 0;
-
-    if (marena__try_grow(arena, sizeof(c)))
-    {
-        result = marena__push_char__unsafe(arena, c);
-    }
-
-    return result;
-
-}
-
-mem_ref_t
-marena_push_pointer   (struct marena *arena, void *pointer)
-{
-    assert(arena && (arena->data_size != 0));
-    mem_ref_t result = 0;
-
-    if (marena__try_grow(arena, sizeof(pointer)))
-    {
-        result = marena__push_pointer__unsafe(arena, pointer);
-    }
-
-    return result;
-}
-
-
-
-mem_ref_t
-marena_push_cstring (struct marena *arena, char *string)
-{
-    assert(arena && (arena->data_size != 0));
-    assert(string);
-
-
-    /* 
-       The way how we push C strings is very peculiar: Since
-       we need to push byte by byte until we hit the null terminator
-       the allocation may fail at any point due to memory exhaustion.
-
-       What we do:
-       1. We push only the first character and we record it's location
-       2. We keep on pushing the following c-string characters.
-          The following situations may happened:
-          1. No error ever happens we proceed to push the null terminator
-          2. If an allocation error happens the string will remained
-             on the arena malformed. We need to unwind all the previosly
-             pushed characters.
-    */
-    
-    mem_ref_t result = marena_push_char(arena, string[0]);
-    if ( result )
-    {
-        mem_ref_t temp = 0;
-        for ( char *c = string + 1; *c != 0; c ++ )
-        {
-            temp = marena_push_char(arena, *c);
-            if ( !temp ) { break; }
-        }
-        if ( *(string + 1) && temp == 0 )
-        {
-            // If we ever fail to push even a single character we amend
-            //    all the previously pushed chars and return an invalid reference
-            marena_pop_upto(arena, result);
-            result = 0;
-        }
-        else
-        {
-            /* Push the null terminator */
-            temp = marena_push_char(arena, '\0');
-            if (temp == 0)
-            {
-                /* We couldn't push the null terminator: unwind */
-                marena_pop_upto(arena, result);
-                result = 0;
-            }
-        }
-    }
-    return result;
-}
-
-mem_ref_t
-marena_push_pstr32    ( struct marena *arena, PStr32 *string )
-{
-    return marena_push(arena, string, (U32) sizeof(Str32Hdr) + (U32) string->bufsize);
-}
-
-mem_ref_t
-marena_push_str32_nodata     ( struct marena *arena, Str32 *string )
-{
-    return marena_push(arena, string, sizeof(Str32Hdr));
-}
-
-
-mem_ref_t
-marena_push_str32_withdata   ( struct marena *arena, Str32 *string )
-{
-    mem_ref_t result = marena_push(arena, string, sizeof(Str32Hdr));
-    if (result)
-    {
-        mem_ref_t temp = marena_push(arena, string->data, (U32) string->bufsize);
-        if (!temp)
-        {
-            /* Failed allocation */
-            marena_pop_upto(arena, result);
-            result = 0;
-        }
-    }
-    return result;
-}
-
 
 
 void
 marena_pop_upto(struct marena *arena, mem_ref_t ref)
 {
-    assert(ref >= MARENA_GUARANTEED_ALIGNMENT); // zero-th index is reserved
-    assert(arena && (arena->data_size != 0));
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size == 0);
+    
+    assert(ref >= MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE);
 
     assert(ref < arena->data_size);
     if (ref < arena->data_size)
@@ -695,22 +481,467 @@ marena_pop_upto(struct marena *arena, mem_ref_t ref)
     }
     else
     {
-        assert_msg(0, "You're using a reference that is possibly invalidate, since it points to buffer that does not currently exist\n");
+        assert_msg(0, "You're using a reference that is possibly invalid, since it points to buffer that does not currently exist\n");
     }
 }
 
-void
-marena_fetch (struct marena *arena, mem_ref_t ref, void *output, U32 sizeof_elem)
-{
-    assert(arena && (arena->data_size != 0));
-    assert(ref >= MARENA_GUARANTEED_ALIGNMENT); // zero-th index is reserved
-    void *abs_addr = &(arena->buffer[ref]);
-    memcpy(output, abs_addr, sizeof_elem);
-}
 
 void
-marena_clear(struct marena *arena)
+marena_begin (struct marena *arena)
+{
+    assert_valid_marena(arena);
+    assert_msg(arena->alloc_context.staging_size == 0, "Previous push begins must finish");
+    arena->alloc_context.staging_size = (arena->data_size);
+}
+
+
+void
+marena_dismiss (struct marena *arena)
+{
+    assert_valid_marena(arena);
+    /* @NOTE :: Copied from pop_upto function */
+    assert(arena && (arena->data_size != 0));
+    assert(arena->alloc_context.staging_size >= arena->data_size);
+
+    memclr(&arena->alloc_context, sizeof(arena->alloc_context));
+}
+
+
+mem_ref_t
+marena_commit (struct marena *arena)
+{
+    assert_valid_marena(arena);
+    mem_ref_t ref = 0;
+
+    assert(arena->alloc_context.staging_size >= arena->data_size);
+    
+    if (!arena->alloc_context.failed)
+    {
+        ref = arena->data_size;
+
+        arena->data_size = arena->alloc_context.staging_size;
+    }
+
+    marena_dismiss(arena);
+
+    return ref;
+}
+
+
+static bool
+marena_add_failure(struct marena *arena)
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+    arena->alloc_context.failed = true;
+    return false;
+}
+
+static inline bool
+marena_would_overflow_stack_pointer(struct marena *arena,
+                                    U32 sizeof_data)
+{
+    if ( sizeof_data > U32_MAX - arena->alloc_context.staging_size)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+
+static inline bool
+marena_ensure_add_operation_is_possible(struct marena *arena,
+                                        U32 sizeof_data_to_be_added)
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+
+    if ((arena->alloc_context.failed == false)
+        && (!marena_would_overflow_stack_pointer(arena, sizeof_data_to_be_added)))
+    {
+        if (marena_accomodate_for_size(arena, sizeof_data_to_be_added))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool
+marena_add(struct marena *arena, void *data, U32 sizeof_data )
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+
+    if (!marena_ensure_add_operation_is_possible(arena, sizeof_data))
+    {
+        return marena_add_failure(arena);
+    }
+    
+    memcpy((ptr_t) arena->buffer + arena->alloc_context.staging_size,
+           data, sizeof_data);
+    arena->alloc_context.staging_size += sizeof_data;
+    
+    return true;
+}
+
+bool
+marena_add_null_data(struct marena *arena, U32 sizeof_data, bool initialize_to_zero )
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+
+    if (!marena_ensure_add_operation_is_possible(arena, sizeof_data))
+    {
+        return marena_add_failure(arena);
+    }
+
+
+    if (initialize_to_zero)
+    {
+        memclr((ptr_t) arena->buffer + arena->alloc_context.staging_size, sizeof_data);
+    }
+    arena->alloc_context.staging_size += sizeof_data;
+    
+    return true;
+}
+
+bool
+marena_add_pointer(struct marena *arena, void *pointer)
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+    
+    if (!marena_ensure_add_operation_is_possible(arena, (U32) sizeof(void*)))
+    {
+        return marena_add_failure(arena);
+    }
+
+    *((void **)arena->buffer + arena->alloc_context.staging_size) = pointer;
+    
+    arena->alloc_context.staging_size += (U32) sizeof(void*);
+    return true;
+}
+
+bool
+marena_add_byte(struct marena *arena, byte_t b)
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+    
+    if (!marena_ensure_add_operation_is_possible(arena, (U32) sizeof(byte_t)))
+    {
+        return marena_add_failure(arena);
+    }
+
+    *((byte_t*) arena->buffer + arena->alloc_context.staging_size) = b;
+    
+    arena->alloc_context.staging_size += (U32) sizeof(byte_t);
+
+    return true;
+}
+
+bool
+marena_add_char (struct marena *arena, char c)
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+
+    if (!marena_ensure_add_operation_is_possible(arena, (U32) sizeof(char)))
+    {
+        return marena_add_failure(arena);
+    }
+
+    *((char*) arena->buffer + arena->alloc_context.staging_size) = c;
+    arena->alloc_context.staging_size += (U32) sizeof(char);
+    
+    return true;
+}
+
+
+
+bool
+marena_add_i8(struct marena *arena, I8 i8)
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+
+    if (!marena_ensure_add_operation_is_possible(arena, (U32) sizeof(I8)))
+    {
+        return marena_add_failure(arena);
+    }
+
+    *((I8*) arena->buffer + arena->alloc_context.staging_size) = i8;
+    arena->alloc_context.staging_size += (U32) sizeof(I8);
+    
+    return true;
+}
+
+
+bool
+marena_add_u8(struct marena *arena, U8 u8)
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+
+    if (!marena_ensure_add_operation_is_possible(arena, (U32) sizeof(U8)))
+    {
+        return marena_add_failure(arena);
+    }
+
+    *((U8*) arena->buffer + arena->alloc_context.staging_size) = u8;
+    arena->alloc_context.staging_size += (U32) sizeof(U8);
+    
+    return true;
+}
+
+
+
+
+bool
+marena_add_i16(struct marena *arena, I16 i16)
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+
+    if (!marena_ensure_add_operation_is_possible(arena, (U32) sizeof(I16)))
+    {
+        return marena_add_failure(arena);
+    }
+
+    *((I16*) arena->buffer + arena->alloc_context.staging_size) = i16;
+    arena->alloc_context.staging_size += (U32) sizeof(I16);
+    
+    return true;
+}
+
+
+bool
+marena_add_u16(struct marena *arena, U16 u16)
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+
+    if (!marena_ensure_add_operation_is_possible(arena, (U32) sizeof(U16)))
+    {
+        return marena_add_failure(arena);
+    }
+
+    *((U16*) arena->buffer + arena->alloc_context.staging_size) = u16;
+    arena->alloc_context.staging_size += (U32) sizeof(U16);
+    
+    return true;
+}
+
+
+
+
+
+bool
+marena_add_i32(struct marena *arena, I32 i32)
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+
+    if (!marena_ensure_add_operation_is_possible(arena, (U32) sizeof(I32)))
+    {
+        return marena_add_failure(arena);
+    }
+
+    *((I32*) arena->buffer + arena->alloc_context.staging_size) = i32;
+    arena->alloc_context.staging_size += (U32) sizeof(I32);
+    
+    return true;
+}
+
+
+bool
+marena_add_u32(struct marena *arena, U32 u32)
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+
+    if (!marena_ensure_add_operation_is_possible(arena, (U32) sizeof(U32)))
+    {
+        return marena_add_failure(arena);
+    }
+
+    *((U32*) arena->buffer + arena->alloc_context.staging_size) = u32;
+    arena->alloc_context.staging_size += (U32) sizeof(U32);
+    
+    return true;
+}
+
+
+
+
+bool
+marena_add_i64(struct marena *arena, I64 i64)
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+
+    if (!marena_ensure_add_operation_is_possible(arena, (U32) sizeof(I64)))
+    {
+        return marena_add_failure(arena);
+    }
+
+    *((I64*) arena->buffer + arena->alloc_context.staging_size) = i64;
+    arena->alloc_context.staging_size += (U32) sizeof(I64);
+    
+    return true;
+}
+
+
+bool
+marena_add_u64(struct marena *arena, U64 u64)
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+
+    if (!marena_ensure_add_operation_is_possible(arena, (U32) sizeof(U64)))
+    {
+        return marena_add_failure(arena);
+    }
+
+    *((U64*) arena->buffer + arena->alloc_context.staging_size) = u64;
+    arena->alloc_context.staging_size += (U32) sizeof(U64);
+    
+    return true;
+}
+
+
+bool
+marena_add_size_t(struct marena *arena, size_t s)
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+
+    if (!marena_ensure_add_operation_is_possible(arena, (U32) sizeof(size_t)))
+    {
+        return marena_add_failure(arena);
+    }
+
+    *((size_t*) arena->buffer + arena->alloc_context.staging_size) = s;
+    arena->alloc_context.staging_size += (U32) sizeof(size_t);
+    
+    return true;
+}
+
+bool
+marena_add_usize(struct marena *arena, usize us)
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+
+    if (!marena_ensure_add_operation_is_possible(arena, (U32) sizeof(usize)))
+    {
+        return marena_add_failure(arena);
+    }
+
+    *((usize*) arena->buffer + arena->alloc_context.staging_size) = us;
+    arena->alloc_context.staging_size += (U32) sizeof(us);
+    
+    return true;
+}
+
+bool
+marena_add_cstr(struct marena *arena, char *cstr)
+{
+    bool result = true;
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+
+    for (char *s = cstr; *s; s++)
+    {
+        result = marena_add_char(arena, *s);
+        if (!result)
+        {
+            break;
+        }
+    }
+    // Add the null-terminator
+    result = marena_add_char(arena, '\0');
+    return result;
+}
+
+
+
+
+bool
+marena_add_pstr32( struct marena *arena, PStr32 *pstr32 )
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+    
+    return marena_add(arena, pstr32, (U32) sizeof(Str32Hdr) + (U32) pstr32->bufsize);
+}
+
+
+bool
+marena_add_str32_nodata( struct marena *arena, Str32 str32 )
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+ 
+    return marena_add(arena, &str32, (U32) sizeof(Str32Hdr));
+}
+
+
+bool
+marena_add_str32_withdata( struct marena *arena, Str32 str32 )
+{
+    assert_valid_marena(arena);
+    assert(arena->alloc_context.staging_size != 0);
+    assert(str32.bufsize > 0);
+
+    bool result = marena_add(arena, &str32, (U32) sizeof(Str32Hdr));
+    if (result)
+    {
+        result = marena_add(arena, (ptr_t) &str32 + sizeof(Str32Hdr), (U32) str32.bufsize);
+    }
+    return result;
+}
+
+
+
+bool
+marena_ask_alignment(struct marena *arena, U32 alignment)
 {
     assert(arena && (arena->data_size != 0));
-    arena->data_size = MARENA_GUARANTEED_ALIGNMENT;
+    const usize curr_addr = (usize) arena->buffer + arena->data_size;
+    const usize aligned_addr = (usize) ALIGN(curr_addr, (usize) alignment);
+    const U32 required_bytes_for_alignment = (U32) (aligned_addr - curr_addr);
+    return marena_add_null_data(arena, required_bytes_for_alignment, true);
 }
+
+
+#define MARENA_PUSH_WRAPPER_DEF(...)    \
+        marena_begin(arena);                      \
+        __VA_ARGS__;                              \
+        return marena_commit(arena);              \
+
+
+mem_ref_t marena_push                (struct marena *arena, void *data, U32 sizeof_data )               { MARENA_PUSH_WRAPPER_DEF(marena_add                (arena, data, sizeof_data)) }
+mem_ref_t marena_push_null_data      (struct marena *arena, U32 sizeof_data, bool initialize_to_zero )  { MARENA_PUSH_WRAPPER_DEF(marena_add_null_data      (arena, sizeof_data, initialize_to_zero)) }
+mem_ref_t marena_push_pointer        (struct marena *arena, void *pointer)                              { MARENA_PUSH_WRAPPER_DEF(marena_add_pointer        (arena, pointer)) }
+mem_ref_t marena_push_byte           (struct marena *arena, byte_t b )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_byte           (arena, b )) }
+mem_ref_t marena_push_char           (struct marena *arena, char c )                                    { MARENA_PUSH_WRAPPER_DEF(marena_add_char           (arena, c )) }
+mem_ref_t marena_push_i8             (struct marena *arena, I8 i8 )                                     { MARENA_PUSH_WRAPPER_DEF(marena_add_i8             (arena, i8 )) }
+mem_ref_t marena_push_u8             (struct marena *arena, U8 u8 )                                     { MARENA_PUSH_WRAPPER_DEF(marena_add_u8             (arena, u8 )) }
+mem_ref_t marena_push_i16            (struct marena *arena, I16 i16 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i16            (arena, i16 )) }
+mem_ref_t marena_push_u16            (struct marena *arena, U16 u16 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u16            (arena, u16 )) }
+mem_ref_t marena_push_i32            (struct marena *arena, I32 i32 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i32            (arena, i32 )) }
+mem_ref_t marena_push_u32            (struct marena *arena, U32 u32 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u32            (arena, u32 )) }
+mem_ref_t marena_push_i64            (struct marena *arena, I64 i64 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i64            (arena, i64 )) }
+mem_ref_t marena_push_u64            (struct marena *arena, U64 u64 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u64            (arena, u64 )) }
+mem_ref_t marena_push_size_t         (struct marena *arena, size_t s )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_size_t         (arena, s )) }
+mem_ref_t marena_push_usize          (struct marena *arena, usize us )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_usize          (arena, us )) }
+mem_ref_t marena_push_cstr           (struct marena *arena, char* cstr )                                { MARENA_PUSH_WRAPPER_DEF(marena_add_cstr           (arena, cstr )) }
+mem_ref_t marena_push_pstr32         (struct marena *arena, PStr32 *pstr32 )                            { MARENA_PUSH_WRAPPER_DEF(marena_add_pstr32        (arena, pstr32 )) }
+mem_ref_t marena_push_str32_nodata   (struct marena *arena, Str32 str32 )                               { MARENA_PUSH_WRAPPER_DEF(marena_add_str32_nodata   (arena, str32 )) }
+mem_ref_t marena_push_str32_withdata (struct marena *arena, Str32 str32 )                               { MARENA_PUSH_WRAPPER_DEF(marena_add_str32_withdata (arena, str32 )) }
+mem_ref_t marena_push_alignment      (struct marena *arena, U32 alignment)                              { MARENA_PUSH_WRAPPER_DEF(marena_ask_alignment      (arena, alignment)) }

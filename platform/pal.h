@@ -109,10 +109,21 @@ static const DllHandle  Invalid_DllHandle  = 0;
 #endif
 
 
+/* Process Termination */
+void
+pal_exit(int status)
+     ATTRIB_NORETURN;
+
+/* Meant for aborting, eg close the process now and do
+   not flush any stream. This should used only if you
+   know you're in a possibly unrecoverable state. */
+void
+pal_abort(void)
+    ATTRIB_NORETURN;
 
 void
-fatal(char *fmt, ...);
-
+pal_fatal(char *fmt, ...)
+    ATTRIB_NORETURN;
 
 
 void
