@@ -105,8 +105,9 @@ __BEGIN_DECLS
      + sizeof(typeof(int[1 - 2 *                                        \
                          !!__builtin_types_compatible_p(typeof(arr), typeof(&arr[0]))])) * 0)
 #else
-# define ARRAY_LEN(A)                           \
-    (sizeof(A) / sizeof((A)[0]))
+# define ARRAY_LEN(A)                                            \
+    ((sizeof(A) / sizeof((A)[0]))                                \
+     / ((size_t) !(sizeof(A) % sizeof((A)[0])))) /* Make sure that the sizeof(A) is a multiple of sizeof(A[0]), if this does not hold divide by zero to trigger a warning */
 #endif
 
 /* Compute the length of a c-string literal known at compile time */
@@ -198,6 +199,14 @@ __BEGIN_DECLS
   #endif
 #endif
 
+
+
+/* Thread Local Storage */
+#if __GNUC__ || __clang__
+#  define THREAD_LOCAL_STORAGE __thread
+#elif _MSC_VER
+#  define THREAD_LOCAL_STORAGE __declspec ( thread )
+#endif
 
 
 

@@ -878,8 +878,11 @@ marena_add_cstr(struct marena *arena, char *cstr)
             break;
         }
     }
-    // Add the null-terminator
-    result = marena_add_char(arena, '\0');
+    if (result)
+    {
+        // Add the null-terminator
+        result = marena_add_char(arena, '\0');
+    }
     return result;
 }
 
@@ -934,10 +937,10 @@ marena_ask_alignment(struct marena *arena, U32 alignment)
 }
 
 
-#define MARENA_PUSH_WRAPPER_DEF(...)    \
-        marena_begin(arena);                      \
-        __VA_ARGS__;                              \
-        return marena_commit(arena);              \
+#define MARENA_PUSH_WRAPPER_DEF(...)            \
+    marena_begin(arena);                        \
+    __VA_ARGS__;                                \
+    return marena_commit(arena);                \
 
 
 mem_ref_t marena_push                (struct marena *arena, void *data, U32 sizeof_data )               { MARENA_PUSH_WRAPPER_DEF(marena_add                (arena, data, sizeof_data)) }

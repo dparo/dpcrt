@@ -27,7 +27,6 @@
 
 __BEGIN_DECLS
 
-
 enum page_prot_flags {
     PAGE_PROT_NONE  = 0,         /* Memory cannot be accessed */
     PAGE_PROT_READ  = (1 << 0),  /* Memory can be read */

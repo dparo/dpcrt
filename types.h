@@ -135,28 +135,28 @@ typedef uint64 U64;
    with a `<XX>_LIT` macro; but we want to remain conservative in the
    case the compiler is not fully C99 STANDARD compliant.
 */
-#define U8_MAX  ( U8_LIT(0xff))
+#define U8_MAX  (U8_LIT(0xff))
 #define U16_MAX (U16_LIT(0xffff))
 #define U32_MAX (U32_LIT(0xfffffffff))
 #define U64_MAX (U64_LIT(0xffffffffffffffff))
 
-#define U8_MIN  ( U8_LIT(0x00))
+#define U8_MIN  (U8_LIT(0x00))
 #define U16_MIN (U16_LIT(0x0000))
 #define U32_MIN (U32_LIT(0x00000000))
 #define U64_MIN (U64_LIT(0x0000000000000000))
 
 
-#define I8_MAX  ( I8_LIT(0x7f))
+#define I8_MAX  (I8_LIT(0x7f))
 #define I16_MAX (I16_LIT(0x7fff))
 #define I32_MAX (I32_LIT(0x7fffffff))
 #define I64_MAX (I64_LIT(0x7fffffffffffffff))
 
-#define I8_MIN  ( I8_LIT(0x80))
+#define I8_MIN  (I8_LIT(0x80))
 #define I16_MIN (I16_LIT(0x8000))
 #define I32_MIN (I32_LIT(0x80000000))
 #define I64_MIN (I64_LIT(0x8000000000000000))
 
-
+#include "endian_types.h"
 
 /* Very simple c-string wrappers with len precomputed, and a buffer size associated.
    The data points to a valid c-string and it is _GUARANTEED_ to be NULL-TERMINATED.
