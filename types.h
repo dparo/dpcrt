@@ -156,7 +156,8 @@ typedef uint64 U64;
 #define I32_MIN (I32_LIT(0x80000000))
 #define I64_MIN (I64_LIT(0x8000000000000000))
 
-#include "endian_types.h"
+
+
 
 /* Very simple c-string wrappers with len precomputed, and a buffer size associated.
    The data points to a valid c-string and it is _GUARANTEED_ to be NULL-TERMINATED.

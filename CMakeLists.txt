@@ -27,7 +27,6 @@ else()
 endif()
 
 
-
 if(MSVC)
     add_definitions(/FI"./build_config.h")
 else()
@@ -69,6 +68,27 @@ target_compile_definitions(
   __PAL_ARCHITECTURE_SIZE__=${__PAL_ARCHITECTURE_SIZE__}
   )
 
+option(IS_BIG_ENDIAN_MACHINE "Set to true if compiling for a BIG ENDIAN platform" 0)
+
+if (IS_BIG_ENDIAN_MACHINE)
+  target_compile_definitions(
+    dpcrt
+    
+    PUBLIC
+    __PAL_LITTLE_ENDIAN__=0
+    __PAL_BIG_ENDIAN__=1
+    )
+
+else()
+    target_compile_definitions(
+    dpcrt
+    
+    PUBLIC
+    __PAL_LITTLE_ENDIAN__=1
+    __PAL_BIG_ENDIAN__=0
+    )
+
+endif()
 
 if(WIN32)
   if(CMAKE_CL_64)
