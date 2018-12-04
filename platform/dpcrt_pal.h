@@ -22,7 +22,7 @@
 #ifndef HGUARD_01ef9fe4705a44d2a31a6ea3027f7dfb
 #define HGUARD_01ef9fe4705a44d2a31a6ea3027f7dfb
 
-#include "utils.h"
+#include "dpcrt_utils.h"
 #include <stdio.h>
 
 __BEGIN_DECLS

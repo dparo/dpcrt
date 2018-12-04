@@ -23,8 +23,8 @@
 #define HGUARD_913afe5e925b492c80162770223d0e4c
 
 
-#include "utils.h"
-#include "types.h"
+#include "dpcrt_utils.h"
+#include "dpcrt_types.h"
 #include "dpcrt_math.h"
 
 __BEGIN_DECLS

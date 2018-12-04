@@ -22,8 +22,8 @@
 #ifndef HGUARD_27b30011b22943b69d0a4062f38d2698
 #define HGUARD_27b30011b22943b69d0a4062f38d2698
 
-#include "utils.h"
-#include "types.h"
+#include "dpcrt_utils.h"
+#include "dpcrt_types.h"
 
 __BEGIN_DECLS
 
@@ -31,7 +31,7 @@ __BEGIN_DECLS
 // @NOTE :: For reference on more hash functions:
 //          https://en.wikipedia.org/wiki/List_of_hash_functions
 
-static inline uint32 simple_hash(ptr_t buffer, size_t len)
+static inline uint32 simple_hash(U8 *buffer, size_t len)
 {
     uint32 hash = 0;
     while (len-- > 0)
@@ -45,7 +45,7 @@ static inline uint32 simple_hash(ptr_t buffer, size_t len)
 //   Can be used as a checksum or as a hash_function
 //    to index on 32 bit sized hashmaps
 // @NOTE :: https://en.wikipedia.org/wiki/Adler-32
-static inline uint32 adler32(ptr_t buffer, const size_t len)
+static inline uint32 adler32(U8* buffer, const size_t len)
 {
 #define MOD_ADLER ((uint32) 65521)
     uint32 a = 1, b = 0;

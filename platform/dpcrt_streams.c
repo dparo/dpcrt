@@ -19,8 +19,8 @@
  * THE SOFTWARE.
  */
 
-#include "streams.h"
-#include "pal.h"
+#include "dpcrt_streams.h"
+#include "dpcrt_pal.h"
 
 static void
 istream__reset_buffer(IStream *istream,

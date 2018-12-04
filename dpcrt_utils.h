@@ -23,8 +23,8 @@
 #define HGUARD_183f4851c423485faffa8b8cd1f85f24
 
 #include "../build_config.h"
-#include "compiler.h"
-#include "types.h"
+#include "dpcrt_compiler.h"
+#include "dpcrt_types.h"
 #include <errno.h>
 #include <string.h>
 
@@ -71,7 +71,11 @@ __BEGIN_DECLS
 #define MEGA(x) ((size_t) (KILO(x)) << 10)
 #define GIGA(x) ((size_t) (MEGA(x)) << 10)
 
-
+#define BIT(TYPE, POSITION) ( ((TYPE) 1 << (TYPE) POSITION ))
+#define enum8(TYPE) I8
+#define enum16(TYPE) I16
+#define enum32(TYPE) I32
+#define enum64(TYPE) I64
 
 
 # ifndef PAGE_SHIFT
@@ -98,6 +102,8 @@ __BEGIN_DECLS
 #define memclr(SRC, SIZE)                       \
     (memset((SRC), 0, (SIZE)))
 
+#define zero_struct(S)                          \
+    memclr(S, sizeof(*(S)))
 
 __END_DECLS
 

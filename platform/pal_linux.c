@@ -21,8 +21,8 @@
 
 #include <stdarg.h>
 
-#include "pal.h"
-#include "utils.h"
+#include "dpcrt_pal.h"
+#include "dpcrt_utils.h"
 
 #include <errno.h>
 #include <sys/mman.h>
@@ -376,7 +376,7 @@ pal_mmap_file(char *file, void* addr, enum page_prot_flags prot, enum page_type_
               bool zeroed_page_before, size_t appended_zeroes,
               I64 *buffer_len ) // Output: The buffer len (eg the length of the file)
 {
-    ptr_t *result = 0;
+    void* result = 0;
     FileHandle fh = pal_openfile(file, FILE_RDWR);
     if ( fh == Invalid_FileHandle )
     {
@@ -389,7 +389,7 @@ pal_mmap_file(char *file, void* addr, enum page_prot_flags prot, enum page_type_
     if (st == 0)
     {
         I64 page_size = pal_get_page_size();
-        ptr_t zeroed_page = 0;
+        void *zeroed_page = 0;
 
         if ( zeroed_page_before )
         {

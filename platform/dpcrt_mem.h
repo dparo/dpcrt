@@ -22,12 +22,12 @@
 #ifndef HGUARD_77f71620e38a4ba09d5a55b0bc707a92
 #define HGUARD_77f71620e38a4ba09d5a55b0bc707a92
 
-#include "utils.h"
+#include "dpcrt_utils.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include "types.h"
-#include "pal.h"
+#include "dpcrt_types.h"
+#include "dpcrt_pal.h"
 
 
 __BEGIN_DECLS
@@ -49,7 +49,7 @@ enum realloc_strategy {
     ReallocStrategy_Xrealloc        = 1,
     ReallocStrategy_Realloc         = 2,
     ReallocStrategy_MRemap_MayMove  = 3, // Pointers inside the buffer may get invalidated. May need to use offset
-                                         // inside the buffer which are relative position indipendent from the start
+                                         // inside the buffer which are relative position independent from the start
                                          // of the buffer.
     ReallocStrategy_MRemap_KeepAddr = 4, // Try to keep the address the same. Pointers to the memory region
                                          // will not get invalidate. May fail more easily if the OS could not fit
@@ -62,11 +62,16 @@ enum dealloc_strategy {
 };
 
 
+
+
 // @IMPORTANT @NOTE: a MemRef with a 0 rel_offset value should be considered invalid and not pointing
 //  to something usefull. Implementations of memory allocators making use of this
 //  `MemRef` should skip 1 byte after the creation in order to reserve the zero-eth offset.
 //   Usually a MemRef is implemented with a index (relative offset)
 typedef U32 mem_ref_t;
+
+void* mem_mmap(size_t size);
+void  mem_unmap(void *addr, size_t size);
 
 void*
 mem_alloc( enum alloc_strategy alloc_strategy,
@@ -75,7 +80,7 @@ mem_alloc( enum alloc_strategy alloc_strategy,
 
 void*
 mem_realloc__release ( enum realloc_strategy realloc_strategy,
-                       ptr_t  old_addr,
+                       void  *old_addr,
                        size_t old_size,
                        size_t new_size,
                        size_t alignment );
@@ -83,7 +88,7 @@ mem_realloc__release ( enum realloc_strategy realloc_strategy,
 #if MEMORY_LAYER_DEBUG_CODE
 void*
 mem_realloc__debug ( enum realloc_strategy realloc_strategy,
-                     ptr_t  old_addr,
+                     void  *old_addr,
                      size_t old_size,
                      size_t new_size,
                      size_t alignment );
@@ -102,7 +107,7 @@ mem_realloc__debug ( enum realloc_strategy realloc_strategy,
 #if 0
 void *
 mem_realloc ( enum realloc_strategy realloc_strategy,
-              ptr_t  addr,
+              void  *addr,
               size_t old_size,
               size_t new_size,
               size_t alignment);
@@ -110,7 +115,7 @@ mem_realloc ( enum realloc_strategy realloc_strategy,
 
 void
 mem_dealloc (enum dealloc_strategy dealloc_strategy,
-             ptr_t  *addr,
+             void *addr,
              size_t  buffer_size);
 
 
@@ -144,7 +149,7 @@ typedef struct marena {
     U32                   data_size;
     U32                   data_max_size;
     
-    ptr_t buffer;
+    U8* buffer;
 } marena_t;
 
 
@@ -255,7 +260,7 @@ marena_unpack_ref__unsafe(struct marena *arena, mem_ref_t ref)
     
     if (ref && ref >= MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE && ref < arena->data_size)
     {
-        return (void*) ((ptr_t) arena->buffer + ref);
+        return (void*) ((U8*) arena->buffer + ref);
     }
     else
     {

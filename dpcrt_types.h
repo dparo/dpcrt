@@ -22,7 +22,7 @@
 #ifndef HGUARD_ac8c7d54818e489096b120ef3afb4a25
 #define HGUARD_ac8c7d54818e489096b120ef3afb4a25
 
-#include "compiler.h"
+#include "dpcrt_compiler.h"
 
 
 __BEGIN_DECLS
@@ -65,7 +65,6 @@ typedef uintptr_t  usize_t;
 typedef isize_t    isize;
 typedef usize_t    usize;
 
-typedef unsigned char*     ptr_t;
 typedef float              float32;
 typedef double             float64;
 typedef signed char        int8;
@@ -82,7 +81,6 @@ typedef uint8  bool8;
 typedef uint16 bool16;
 typedef uint32 bool32;
 
-typedef ptr_t  Ptr;
 typedef uint8  Byte;
 
 typedef float  F32;

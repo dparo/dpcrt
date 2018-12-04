@@ -22,12 +22,11 @@
 #ifndef HGUARD_7bc04f162a704edb9ecd9b36e88dd34d
 #define HGUARD_7bc04f162a704edb9ecd9b36e88dd34d
 
-#include "compiler.h"
-#include "types.h"
-#include "utils.h"
-#include "pal.h"
-#include "mem.h"
-
+#include "dpcrt_compiler.h"
+#include "dpcrt_types.h"
+#include "dpcrt_utils.h"
+#include "dpcrt_pal.h"
+#include "dpcrt_mem.h"
 #include "dpcrt_math.h"
 
 __BEGIN_DECLS

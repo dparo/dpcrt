@@ -23,8 +23,8 @@
 #define HGUARD_c0ebfee833bb44829631b83fbe8d4482
 
 
-#include "pal.h"
-#include "types.h"
+#include "dpcrt_pal.h"
+#include "dpcrt_types.h"
 
 __BEGIN_DECLS
 

@@ -1,35 +1,35 @@
 #ifndef HGUARD_c5de58dedcab4b82a1d15b2f2f956495
 #define HGUARD_c5de58dedcab4b82a1d15b2f2f956495
 
-#include "types.h"
+#include "dpcrt_types.h"
 
 
 __BEGIN_DECLS
 
 
-/* Platform Indipendent Little Endian types.
+/* Platform Independent Little Endian types.
    Use `unions` to enforce strong typing for byte order dependent types. */
-typedef union { I8 val; } I8LE;
-typedef union { U8 val; } U8LE;
-typedef union { I16 val; } I16LE;
-typedef union { U16 val; } U16LE;
-typedef union { I32 val; } I32LE;
-typedef union { U32 val; } U32LE;
-typedef union { I64 val; } I64LE;
-typedef union { U64 val; } U64LE;
+typedef union { I8 val;  }            I8LE;
+typedef union { U8 val;  }            U8LE;
+typedef union { I16 val; }            I16LE;
+typedef union { U16 val; }            U16LE;
+typedef union { I32 val; }            I32LE;
+typedef union { U32 val; }            U32LE;
+typedef union { I64 val; }            I64LE;
+typedef union { U64 val; }            U64LE;
 typedef union { U32 uval; F32 fval; } F32LE;
 typedef union { U64 uval; F64 fval; } F64LE;
 
-/* Platform Indipendent Big Endian types.
+/* Platform Independent Big Endian types.
    Use `unions` to enforce strong typing for byte order dependent types. */
-typedef union { I8 val; } I8BE;
-typedef union { U8 val; } U8BE;
-typedef union { I16 val; } I16BE;
-typedef union { U16 val; } U16BE;
-typedef union { I32 val; } I32BE;
-typedef union { U32 val; } U32BE;
-typedef union { I64 val; } I64BE;
-typedef union { U64 val; } U64BE;
+typedef union { I8 val;  }            I8BE;
+typedef union { U8 val;  }            U8BE;
+typedef union { I16 val; }            I16BE;
+typedef union { U16 val; }            U16BE;
+typedef union { I32 val; }            I32BE;
+typedef union { U32 val; }            U32BE;
+typedef union { I64 val; }            I64BE;
+typedef union { U64 val; }            U64BE;
 typedef union { U32 uval; F32 fval; } F32BE;
 typedef union { U64 uval; F64 fval; } F64BE;
 
@@ -70,10 +70,10 @@ ATTRIB_CONST static inline U64 bswap_u64(const U64 u64) {
 #endif
 
 
-ATTRIB_CONST static inline I8  i8le_to_i8(I8LE i8le)     { return i8le.val; }
-ATTRIB_CONST static inline U8  u8le_to_u8(U8LE u8le)     { return u8le.val; }
-ATTRIB_CONST static inline I8  i8be_to_i8(I8BE i8be)     { return i8be.val; }
-ATTRIB_CONST static inline U8  u8be_to_u8(U8BE u8be)     { return u8be.val; }
+ATTRIB_CONST static inline I8 i8le_to_i8(I8LE i8le) { return i8le.val; }
+ATTRIB_CONST static inline U8 u8le_to_u8(U8LE u8le) { return u8le.val; }
+ATTRIB_CONST static inline I8 i8be_to_i8(I8BE i8be) { return i8be.val; }
+ATTRIB_CONST static inline U8 u8be_to_u8(U8BE u8be) { return u8be.val; }
 
 
 #if __PAL_LITTLE_ENDIAN__
@@ -84,7 +84,7 @@ ATTRIB_CONST static inline U8  u8be_to_u8(U8BE u8be)     { return u8be.val; }
 #  define BBESWAP_U16(x) (bswap_u16(x))
 #  define BBESWAP_U32(x) (bswap_u32(x))
 #  define BBESWAP_U64(x) (bswap_u64(x))
-#else
+#elif __PAL_BIG_ENDIAN__
 #  define BLESWAP_U16(x) (bswap_u16(x))
 #  define BLESWAP_U32(x) (bswap_u32(x))
 #  define BLESWAP_U64(x) (bswap_u64(x))
@@ -92,6 +92,8 @@ ATTRIB_CONST static inline U8  u8be_to_u8(U8BE u8be)     { return u8be.val; }
 #  define BBESWAP_U16(x) (x)
 #  define BBESWAP_U32(x) (x)
 #  define BBESWAP_U64(x) (x)
+#else
+#  error "Unsopported platform"
 #endif
 
 ATTRIB_CONST static inline I16 i16le_to_i16(I16LE i16le) { return (I16) BLESWAP_U16((U16) i16le.val); }
@@ -109,8 +111,10 @@ ATTRIB_CONST static inline I64 i64be_to_i64(I64BE i64be) { return (I64) BBESWAP_
 ATTRIB_CONST static inline U64 u64be_to_u64(U64BE u64be) { return (U64) BBESWAP_U64((U64) u64be.val); }
 
 
-/* Specific Floating Point Endiannes to Host Endian */
+/* Platform Dependent Floating Point Endiannes to Host Endian */
+
 #if __PAL_LITTLE_ENDIAN__
+
 ATTRIB_CONST static inline F32 f32le_to_f32(F32LE f32le) { return f32le.fval; }
 ATTRIB_CONST static inline F64 f64le_to_f64(F64LE f64le) { return f64le.fval; }
 
@@ -124,7 +128,8 @@ ATTRIB_CONST static inline F64 f64be_to_f64(F64BE f64be) {
     f64le.uval = BLESWAP_U64(f64be.uval);
     return f64le.fval;
 }
-#else
+
+#elif __PAL_BIG_ENDIAN__
 
 ATTRIB_CONST static inline F32 f32le_to_f32(F32LE f32le) {
     F32LE f32le;
@@ -140,6 +145,8 @@ ATTRIB_CONST static inline F64 f64le_to_f64(F64LE f64le) {
 ATTRIB_CONST static inline F32 f32be_to_f32(F32BE f32be) { return f32be.fval; }
 ATTRIB_CONST static inline F64 f64be_to_f64(F64BE f64be) { return f64be.fval; }
 
+#else
+#  error "Unsopported platform"
 #endif
 
 

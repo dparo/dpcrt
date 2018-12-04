@@ -19,7 +19,7 @@
  * THE SOFTWARE.
  */
 
-#include "mem.h"
+#include "dpcrt_mem.h"
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -82,6 +82,26 @@ mem_sbrk(size_t size)
 }
 
 void*
+mem_mmap(size_t size)
+{
+    void *addr = 0;
+    const enum page_prot_flags prot = PAGE_PROT_READ | PAGE_PROT_WRITE;
+    const enum page_type_flags type = PAGE_PRIVATE | PAGE_ANONYMOUS;
+    size = PAGE_ALIGN(size);
+    return pal_mmap_memory( addr, size, prot, type );
+}
+
+
+void
+mem_unmap(void *addr, size_t size)
+{
+    assert(size == PAGE_ALIGN(size));
+    int result = pal_munmap(addr, size);
+    (void) result;
+    assert(result == 0);
+}
+
+void*
 mem_alloc( enum alloc_strategy alloc_strategy, size_t size, size_t alignment)
 {
     switch (alloc_strategy)
@@ -110,12 +130,7 @@ mem_alloc( enum alloc_strategy alloc_strategy, size_t size, size_t alignment)
     } break;
 
     case AllocStrategy_Mmap: {
-        alignment = PAGE_ALIGN(alignment);
-        void *addr = 0;
-        const enum page_prot_flags prot = PAGE_PROT_READ | PAGE_PROT_WRITE;
-        const enum page_type_flags type = PAGE_PRIVATE | PAGE_ANONYMOUS;
-        size = PAGE_ALIGN(size);
-        return pal_mmap_memory( addr, size, prot, type );
+        return mem_mmap(size);
     } break;
 
     case AllocStrategy_Sbrk: {
@@ -140,7 +155,7 @@ remap_keepAddr(void *old_addr, size_t old_size, size_t new_size)
 
 void *
 mem_realloc__release ( enum realloc_strategy realloc_strategy,
-                       ptr_t  old_addr,
+                       void  *old_addr,
                        size_t old_size,
                        size_t new_size,
                        size_t alignment )
@@ -199,7 +214,7 @@ mem_realloc__release ( enum realloc_strategy realloc_strategy,
 //   memory region.
 void *
 mem_realloc__debug ( enum realloc_strategy realloc_strategy,
-                     ptr_t  old_addr,
+                     void  *old_addr,
                      size_t old_size,
                      size_t new_size,
                      size_t alignment )
@@ -247,7 +262,7 @@ mem_realloc__debug ( enum realloc_strategy realloc_strategy,
         const bool was_protected = pal_mprotect(old_addr, old_size, PAGE_PROT_NONE);
         assert(was_protected); // debug code we can simply assert here
 #else
-        mem_dealloc(DeallocStrategy_Munmap, & old_addr, old_size);
+        mem_dealloc(DeallocStrategy_Munmap, old_addr, old_size);
 #endif
         
         return new_addr;
@@ -268,7 +283,7 @@ mem_realloc__debug ( enum realloc_strategy realloc_strategy,
 
 void
 mem_dealloc (enum dealloc_strategy dealloc_strategy,
-             ptr_t  *addr, // Double indirection pointer to allows us to set the pointer to null
+             void *addr,
              size_t  size)
 {
     switch (dealloc_strategy)
@@ -277,16 +292,11 @@ mem_dealloc (enum dealloc_strategy dealloc_strategy,
     default: { invalid_code_path(); } break;
 
     case DeallocStrategy_Free: {
-        free(*addr);
-        *addr = NULL;
+        free(addr);
     } break;
 
     case DeallocStrategy_Munmap: {
-        size = PAGE_ALIGN(size);
-        int result = pal_munmap(*addr, size);
-        (void) result;
-        assert(result == 0);
-        *addr = NULL;
+        mem_unmap(addr, size);
     } break;
 
     }
@@ -444,6 +454,7 @@ marena_del(struct marena *arena)
     if ( arena )
     {
         mem_dealloc(arena->dealloc_strategy, &(arena->buffer), arena->data_max_size);
+        arena->buffer = NULL;
     }
     memclr(arena, sizeof(*arena));
 }
@@ -596,7 +607,7 @@ marena_add(struct marena *arena, void *data, U32 sizeof_data )
         return marena_add_failure(arena);
     }
     
-    memcpy((ptr_t) arena->buffer + arena->alloc_context.staging_size,
+    memcpy((U8*) arena->buffer + arena->alloc_context.staging_size,
            data, sizeof_data);
     arena->alloc_context.staging_size += sizeof_data;
     
@@ -617,7 +628,7 @@ marena_add_null_data(struct marena *arena, U32 sizeof_data, bool initialize_to_z
 
     if (initialize_to_zero)
     {
-        memclr((ptr_t) arena->buffer + arena->alloc_context.staging_size, sizeof_data);
+        memclr((U8*) arena->buffer + arena->alloc_context.staging_size, sizeof_data);
     }
     arena->alloc_context.staging_size += sizeof_data;
     
@@ -919,7 +930,7 @@ marena_add_str32_withdata( struct marena *arena, Str32 str32 )
     bool result = marena_add(arena, &str32, (U32) sizeof(Str32Hdr));
     if (result)
     {
-        result = marena_add(arena, (ptr_t) &str32 + sizeof(Str32Hdr), (U32) str32.bufsize);
+        result = marena_add(arena, (U8*) &str32 + sizeof(Str32Hdr), (U32) str32.bufsize);
     }
     return result;
 }

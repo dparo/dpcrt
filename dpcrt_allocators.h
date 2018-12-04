@@ -1,10 +1,9 @@
 #ifndef HGUARD_6cae59f8ded7434090c01c15fe03a866
 #define HGUARD_6cae59f8ded7434090c01c15fe03a866
 
-#include "types.h"
-#include "utils.h"
+#include "dpcrt_types.h"
+#include "dpcrt_utils.h"
 
-#include
 
 __BEGIN_DECLS
 
@@ -38,12 +37,13 @@ typedef struct MemRefHandle
 } MemRefHandle;
 
 
-
+#if 0
 typedef struct SAPushContext
 {
-    B32 valid;
+    bool32 valid;
     U32 pushed_memory_size;
 }  SAPushContext;
+
 
 typedef struct IFACE_StackAllocator
 {
@@ -151,12 +151,57 @@ typedef struct IFACE_GenericAllocator
 } IFACE_GenericAllocator;
 
 
-
-
-
 typedef BufferU32 MallocBasedStackAllocator;
 
+#endif
 
+
+typedef union FreeListBlock
+{
+    union FreeListBlock *next_block;
+    /* ... PAYLOAD .... */
+} FreeListBlock;
+
+typedef struct FreeListChunk
+{
+    bool8 is_filling_up;
+    
+    /* ---- */
+    struct FreeListChunk *next_chunk;
+    union  FreeListBlock *next_block;
+
+    /* ---- */
+    U8 payload[];
+} FreeListChunk;
+
+typedef struct FreeList
+{
+    U32   chunk_size;
+    U16   block_size;
+    bool8 allocate_more_chunks_on_demand;
+    
+    FreeListChunk *first_chunk;
+} FreeList;
+
+
+
+
+bool
+freelist_init_aux(FreeList *freelist,
+                  U32 chunk_size,
+                  U16 block_size,
+                  bool8 allocate_more_chunks_on_demand );
+
+bool freelist_init(FreeList *freelist,
+                   U16 block_size); /* The block size determines the maximum possible
+                                       allocatable size ( a high block_size value may
+                                       lead to high internal memory fragmentation )*/
+
+
+void* freelist_alloc(FreeList *freelist, U16 size);
+void  freelist_free(FreeList *freelist, void *ptr);
+void  freelist_clear(FreeList *freelist);
+void  freelist_del(FreeList *freelist);
 
 
 __END_DECLS

@@ -40,16 +40,18 @@ add_library(
 
   STATIC
 
-  types.c
+  dpcrt_types.c
 
   hash.c
   math/statistics.c
 
   mem_layout.c
 
-  platform/mem.c
-  platform/streams.c
+  platform/dpcrt_mem.c
+  platform/dpcrt_streams.c
 
+  dpcrt_allocators.c
+  
   )
 
 

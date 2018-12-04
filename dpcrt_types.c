@@ -19,7 +19,7 @@
  * THE SOFTWARE.
  */
 
-#include "types.h"
+#include "dpcrt_types.h"
 
 
 
@@ -29,7 +29,6 @@
 static_assert(sizeof(unsigned char) == 1, "unsigned char should be `1 byte` in this platform.");
 
 
-static_assert(sizeof(ptr_t)    == sizeof(void*), "");
 static_assert(sizeof(size_t)   == sizeof(void*), "");
 static_assert(sizeof(ssize_t)  == sizeof(size_t), "Those 2 should be equal in size but differ in signedness");
 static_assert(sizeof(intptr_t) == sizeof(size_t), "Those 2 should be equal in size but differ in signedness");

@@ -1,12 +1,11 @@
 
 #include "time.h"
-#include "utils.h"
 #include "dpcrt.h"
 
-char*
-strptime (const char *__restrict source,
-          const char *__restrict format,
-          struct tm *output)
+char *
+strptime (const char *__restrict s,
+          const char *__restrict f,
+          struct tm *tm)
 {
     assert(0);
     return 0;
@@ -22,10 +21,10 @@ timegm (struct tm *tp)
 
 
 extern size_t
-strftime (char *__restrict s,
-          size_t max,
-          const char *__restrict fmt,
-          const struct tm *__restrict output)
+strftime ( char *__restrict s,
+           size_t max,
+           const char *__restrict fmt,
+           const struct tm *__restrict output )
 {
     assert(0);
     return 0;
