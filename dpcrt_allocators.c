@@ -186,14 +186,12 @@ freelist_clear(FreeList *freelist)
     assert(freelist->first_chunk);
     FreeListChunk *chunk = freelist->first_chunk;
 
-    while(!(chunk->next_chunk))
+    while(chunk)
     {
-        FreeListChunk *next = chunk->next_chunk;
+        FreeListChunk *tmp = chunk->next_chunk;
         freelist_init_chunk(chunk);
-        chunk = next;
+        chunk = tmp;
     }
-
-    chunk->next_chunk = NULL;
 }
 
 
@@ -203,14 +201,14 @@ freelist_del(FreeList *freelist)
     assert(freelist->first_chunk);
     FreeListChunk *chunk = freelist->first_chunk;
 
-    while(!(chunk->next_chunk))
+    while(chunk)
     {
-        FreeListChunk *next = chunk->next_chunk;
+        FreeListChunk *tmp = chunk->next_chunk;
         mem_unmap(chunk, freelist->chunk_size);
-        chunk = next;
+        chunk = tmp;
     }
 
-    chunk->next_chunk = NULL;
+    memclr(freelist, sizeof(*freelist));
 }
 
 
