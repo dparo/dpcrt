@@ -182,8 +182,8 @@ void             marena_clear          ( struct marena *arena );
 */
 void             marena_begin              (struct marena *arena);
 
-bool             marena_add                (struct marena *arena, void *data, U32 sizeof_data );
-bool             marena_add_null_data      (struct marena *arena, U32 sizeof_data, bool initialize_to_zero );
+bool             marena_add                (struct marena *arena, U32 sizeof_data, bool initialize_to_zero );
+bool             marena_add_data           (struct marena *arena, void *data, U32 sizeof_data );
 bool             marena_add_pointer        (struct marena *arena, void *pointer);
 bool             marena_add_byte           (struct marena *arena, byte_t b );
 bool             marena_add_char           (struct marena *arena, char c );
@@ -211,9 +211,8 @@ mem_ref_t        marena_commit             (struct marena *arena);
 
 
 
-
-mem_ref_t marena_push                (struct marena *arena, void *data, U32 sizeof_data );
-mem_ref_t marena_push_null_data      (struct marena *arena, U32 sizeof_data, bool initialize_to_zero );
+mem_ref_t marena_push                (struct marena *arena, U32 sizeof_data, bool initialize_to_zero );
+mem_ref_t marena_push_data           (struct marena *arena, void *data, U32 sizeof_data );
 mem_ref_t marena_push_pointer        (struct marena *arena, void *pointer);
 mem_ref_t marena_push_byte           (struct marena *arena, byte_t b );
 mem_ref_t marena_push_char           (struct marena *arena, char c );

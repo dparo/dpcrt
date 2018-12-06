@@ -35,7 +35,6 @@ enum page_prot_flags {
 };
 
 
-
 enum page_type_flags {
     PAGE_FIXED     = 0,
     PAGE_SHARED    = (1 << 0),

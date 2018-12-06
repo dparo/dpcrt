@@ -7,6 +7,7 @@ strptime (const char *__restrict s,
           const char *__restrict f,
           struct tm *tm)
 {
+    (void) s, (void) f, (void) tm;
     assert(0);
     return 0;
 }
@@ -15,6 +16,7 @@ strptime (const char *__restrict s,
 extern time_t
 timegm (struct tm *tp)
 {
+    (void) tp;
     assert(0);
     return 0;
 }
@@ -26,6 +28,7 @@ strftime ( char *__restrict s,
            const char *__restrict fmt,
            const struct tm *__restrict output )
 {
+    (void) s, (void) max, (void) fmt, (void) output;
     assert(0);
     return 0;
 }
@@ -34,6 +37,7 @@ strftime ( char *__restrict s,
 extern struct tm *
 gmtime (const time_t *time)
 {
+    (void) time;
     assert(0);
     return 0;
 }
