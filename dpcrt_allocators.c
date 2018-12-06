@@ -54,7 +54,7 @@ assert_block_fits_in_chunk(FreeList *freelist,
     if (block)
     {
         internal_assert(((U8*) block + freelist->block_size)
-                        > ((U8*) chunk + freelist->chunk_size));
+                        <= ((U8*) chunk + freelist->chunk_size));
     }
 }
 
@@ -102,7 +102,7 @@ mark_block_as_used(FreeList *freelist,
 
     if (next_block)
     {
-        memclr(next_block, freelist->block_size);
+        memclr(block, freelist->block_size);
     }
 }
 
@@ -111,8 +111,6 @@ mark_block_as_avail(FreeList *freelist,
                     FreeListChunk *chunk,
                     FreeListBlock *block)
 {
-    internal_assert(chunk->next_block == block);
-
     {
         *block = (FreeListBlock) {0};
         block->following_blocks_are_all_free = false;
@@ -220,61 +218,46 @@ void *
 freelist_alloc(FreeList *freelist, U16 size)
 {
     assert(freelist->first_chunk);
-    void *result = NULL;
     if (size > freelist->block_size)
     {
         return NULL;
     }
 
     /* Find the chunk where we can allocate */
-    FreeListChunk *chunk = freelist->first_chunk;
+    FreeListChunk *chunk   = freelist->first_chunk;
 
-    bool full = false;
-
-    while(!(chunk->next_chunk))
+    while( chunk->next_chunk
+           && (chunk->next_block == NULL))
     {
-        if (!chunk->next_chunk)
-        {
-            full = true;
-            break;
-        }
         chunk = chunk->next_chunk;
     }
 
-    /* Check if we found a valid chunk, otherwise allocate a new one (if we can ...) */
+    /* Check if we have blocks available in this block, if not try to allocate
+       a new chunk if possible */
+    if (chunk->next_block == NULL)
     {
-        if (full)
+        if (freelist->allocate_more_chunks_on_demand)
         {
-            if (!freelist->allocate_more_chunks_on_demand)
-            {
-                return NULL;
-            }
-            else
-            {
-                FreeListChunk *newchunk = freelist_chain_new_chunk(chunk, freelist->chunk_size);
-
-                if (!newchunk)
-                {
-                    return NULL;
-                }
-
-                chunk = newchunk;
-            }
-
+            chunk = freelist_chain_new_chunk(chunk, freelist->chunk_size);
+        }
+        else
+        {
+            /* We can't find a valid chunk cuz all of them are full and we cannot
+             chain a new one */
+            chunk = NULL;
         }
     }
 
+    void *result = NULL;
 
-    /* Now we have a valid allocated chunk, let's use it for the allocation */
+    if (chunk)
     {
-        internal_assert(chunk);
         internal_assert(chunk->next_block);
 
         result = (void*) chunk->next_block;
         mark_block_as_used(freelist, chunk, chunk->next_block);
+        internal_assert(result);
     }
-
-    internal_assert(result);
 
     return result;
 }
