@@ -264,7 +264,7 @@ mem_realloc__debug ( enum realloc_strategy realloc_strategy,
 #else
         mem_dealloc(DeallocStrategy_Munmap, old_addr, old_size);
 #endif
-        
+
         return new_addr;
     } break;
 
@@ -352,7 +352,7 @@ marena_grow(struct marena *arena)
     else
     {
         newsize = (U32) ((F32) arena->data_max_size * 1.25f) + 8 * (U32) PAGE_SIZE;
-    }    
+    }
     return marena_realloc(arena, newsize);
 }
 
@@ -415,9 +415,9 @@ marena_new_aux ( enum alloc_strategy alloc_strategy,
     const U32 alignment = 128;
     size = ALIGN(size, alignment);
     const size_t alloc_size = size;
-    
+
     void *buffer = mem_alloc( alloc_strategy, alloc_size, alignment);
-    
+
     if (buffer)
     {
         marena.buffer = buffer;
@@ -483,7 +483,7 @@ marena_pop_upto(struct marena *arena, mem_ref_t ref)
 {
     assert_valid_marena(arena);
     assert(arena->alloc_context.staging_size == 0);
-    
+
     assert(ref >= MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE);
 
     assert(ref < arena->data_size);
@@ -541,7 +541,7 @@ marena_commit (struct marena *arena)
 
     assert_valid_marena(arena);
     assert(arena->alloc_context.staging_size >= arena->data_size);
-    
+
     if (!arena->alloc_context.failed)
     {
         ref = arena->data_size;
@@ -606,11 +606,15 @@ marena_add(struct marena *arena, void *data, U32 sizeof_data )
     {
         return marena_add_failure(arena);
     }
-    
-    memcpy((U8*) arena->buffer + arena->alloc_context.staging_size,
-           data, sizeof_data);
+
+    if (data)
+    {
+        memcpy((U8*) arena->buffer + arena->alloc_context.staging_size,
+               data, sizeof_data);
+    }
+
     arena->alloc_context.staging_size += sizeof_data;
-    
+
     return true;
 }
 
@@ -631,7 +635,7 @@ marena_add_null_data(struct marena *arena, U32 sizeof_data, bool initialize_to_z
         memclr((U8*) arena->buffer + arena->alloc_context.staging_size, sizeof_data);
     }
     arena->alloc_context.staging_size += sizeof_data;
-    
+
     return true;
 }
 
@@ -640,14 +644,14 @@ marena_add_pointer(struct marena *arena, void *pointer)
 {
     assert_valid_marena(arena);
     assert(arena->alloc_context.staging_size != 0);
-    
+
     if (!marena_ensure_add_operation_is_possible(arena, (U32) sizeof(void*)))
     {
         return marena_add_failure(arena);
     }
 
     *((void **)arena->buffer + arena->alloc_context.staging_size) = pointer;
-    
+
     arena->alloc_context.staging_size += (U32) sizeof(void*);
     return true;
 }
@@ -657,14 +661,14 @@ marena_add_byte(struct marena *arena, byte_t b)
 {
     assert_valid_marena(arena);
     assert(arena->alloc_context.staging_size != 0);
-    
+
     if (!marena_ensure_add_operation_is_possible(arena, (U32) sizeof(byte_t)))
     {
         return marena_add_failure(arena);
     }
 
     *((byte_t*) arena->buffer + arena->alloc_context.staging_size) = b;
-    
+
     arena->alloc_context.staging_size += (U32) sizeof(byte_t);
 
     return true;
@@ -683,7 +687,7 @@ marena_add_char (struct marena *arena, char c)
 
     *((char*) arena->buffer + arena->alloc_context.staging_size) = c;
     arena->alloc_context.staging_size += (U32) sizeof(char);
-    
+
     return true;
 }
 
@@ -702,7 +706,7 @@ marena_add_i8(struct marena *arena, I8 i8)
 
     *((I8*) arena->buffer + arena->alloc_context.staging_size) = i8;
     arena->alloc_context.staging_size += (U32) sizeof(I8);
-    
+
     return true;
 }
 
@@ -720,7 +724,7 @@ marena_add_u8(struct marena *arena, U8 u8)
 
     *((U8*) arena->buffer + arena->alloc_context.staging_size) = u8;
     arena->alloc_context.staging_size += (U32) sizeof(U8);
-    
+
     return true;
 }
 
@@ -740,7 +744,7 @@ marena_add_i16(struct marena *arena, I16 i16)
 
     *((I16*) arena->buffer + arena->alloc_context.staging_size) = i16;
     arena->alloc_context.staging_size += (U32) sizeof(I16);
-    
+
     return true;
 }
 
@@ -758,7 +762,7 @@ marena_add_u16(struct marena *arena, U16 u16)
 
     *((U16*) arena->buffer + arena->alloc_context.staging_size) = u16;
     arena->alloc_context.staging_size += (U32) sizeof(U16);
-    
+
     return true;
 }
 
@@ -779,7 +783,7 @@ marena_add_i32(struct marena *arena, I32 i32)
 
     *((I32*) arena->buffer + arena->alloc_context.staging_size) = i32;
     arena->alloc_context.staging_size += (U32) sizeof(I32);
-    
+
     return true;
 }
 
@@ -797,7 +801,7 @@ marena_add_u32(struct marena *arena, U32 u32)
 
     *((U32*) arena->buffer + arena->alloc_context.staging_size) = u32;
     arena->alloc_context.staging_size += (U32) sizeof(U32);
-    
+
     return true;
 }
 
@@ -817,7 +821,7 @@ marena_add_i64(struct marena *arena, I64 i64)
 
     *((I64*) arena->buffer + arena->alloc_context.staging_size) = i64;
     arena->alloc_context.staging_size += (U32) sizeof(I64);
-    
+
     return true;
 }
 
@@ -835,7 +839,7 @@ marena_add_u64(struct marena *arena, U64 u64)
 
     *((U64*) arena->buffer + arena->alloc_context.staging_size) = u64;
     arena->alloc_context.staging_size += (U32) sizeof(U64);
-    
+
     return true;
 }
 
@@ -853,7 +857,7 @@ marena_add_size_t(struct marena *arena, size_t s)
 
     *((size_t*) arena->buffer + arena->alloc_context.staging_size) = s;
     arena->alloc_context.staging_size += (U32) sizeof(size_t);
-    
+
     return true;
 }
 
@@ -870,7 +874,7 @@ marena_add_usize(struct marena *arena, usize us)
 
     *((usize*) arena->buffer + arena->alloc_context.staging_size) = us;
     arena->alloc_context.staging_size += (U32) sizeof(us);
-    
+
     return true;
 }
 
@@ -905,7 +909,7 @@ marena_add_pstr32( struct marena *arena, PStr32 *pstr32 )
 {
     assert_valid_marena(arena);
     assert(arena->alloc_context.staging_size != 0);
-    
+
     return marena_add(arena, pstr32, (U32) sizeof(Str32Hdr) + (U32) pstr32->bufsize);
 }
 
@@ -915,7 +919,7 @@ marena_add_str32_nodata( struct marena *arena, Str32 str32 )
 {
     assert_valid_marena(arena);
     assert(arena->alloc_context.staging_size != 0);
- 
+
     return marena_add(arena, &str32, (U32) sizeof(Str32Hdr));
 }
 

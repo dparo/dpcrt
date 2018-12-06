@@ -209,6 +209,8 @@ pal_filetime_cmp(FileTime *ft1,
 /* Memory Mapping */
 /* ############## */
 
+
+
 void*
 pal_mmap_file(char *file, void* addr, enum page_prot_flags prot, enum page_type_flags type,
               bool zeroed_page_before, size_t appended_zeroes,
@@ -223,8 +225,18 @@ pal_mremap( void* old_addr, size_t old_size, void *new_addr, size_t new_size,
 bool                            /* returns was_protected */
 pal_mprotect(void *addr, size_t len, enum page_prot_flags prot);
 
-int
+bool
 pal_munmap( void* addr, size_t size );
+
+
+/* Reserves (a possibly huge) chunk of address space memory
+   which is not actually committed onto physical memory. 
+   This is equivalent to `VirtualAlloc` with `MEM_RESERVE` `MEM_COMMIT`
+   flags. */
+void* pal_reserve_addr_space(void *addr, size_t size);
+bool  pal_commit_addr_space (void *addr, size_t size, enum page_prot_flags prot);
+bool  pal_release_addr_space(void *addr, size_t size);
+
 
 
 enum notify_event_flags {
@@ -247,8 +259,8 @@ typedef struct notify_event {
     // If the the current event is valid or just empty (eg no relevant event occured)
     bool valid;
 
-    FileHandle             fh; // The event occured for this specific filehandle
-    enum notify_event_flags  flags;
+    FileHandle              fh; // The event occured for this specific filehandle
+    enum notify_event_flags flags;
 } notify_event;
 
 // Non blocking

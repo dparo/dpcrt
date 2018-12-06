@@ -291,8 +291,7 @@ pal_mmap_aux( void* addr, size_t size, enum page_prot_flags prot, enum page_type
     void *result = 0x0000;
     int linux_prot  = prot_flags__convert(prot);
     int linux_flags = page_type_flags__convert(type);
-    int32_t offset = 0;
-    result = mmap( addr, size, linux_prot, linux_flags, fh, offset);
+    result = mmap( addr, size, linux_prot, linux_flags, fh, 0);
     if (result == MAP_FAILED ) {
 #if __DEBUG
         {
@@ -308,9 +307,32 @@ pal_mmap_aux( void* addr, size_t size, enum page_prot_flags prot, enum page_type
 }
 
 void*
+pal_reserve_addr_space(void *addr, size_t size)
+{
+    size = PAGE_ALIGN(size);
+    void *result = mmap(addr, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS,
+                        Invalid_FileHandle, 0);
+    return result;
+}
+
+bool
+pal_commit_addr_space (void *addr, size_t size, enum page_prot_flags prot)
+{
+    return pal_mprotect(addr, PAGE_ALIGN(size), prot);
+}
+
+bool
+pal_release_addr_space(void *addr, size_t size)
+{
+    return pal_munmap(addr, PAGE_ALIGN(size));
+}
+
+
+void*
 pal_mmap_memory( void* addr, size_t size, enum page_prot_flags prot, enum page_type_flags type )
 {
-    const FileHandle fh = 0;
+    const FileHandle fh = Invalid_FileHandle;
+    type |= PAGE_ANONYMOUS;
     return pal_mmap_aux( addr, size, prot, type, fh );
 }
 
@@ -421,12 +443,11 @@ pal_mmap_file(char *file, void* addr, enum page_prot_flags prot, enum page_type_
 
 
 
-int
+bool
 pal_munmap( void* addr, size_t size )
 {
-    int result = 0; // 0 = success
-    result = munmap(addr, size);
-    return result;
+    int unmap_result = munmap(addr, size);
+    return (unmap_result == 0);
 }
 
 
