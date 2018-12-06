@@ -453,7 +453,7 @@ marena_del(struct marena *arena)
     assert(arena);
     if ( arena )
     {
-        mem_dealloc(arena->dealloc_strategy, &(arena->buffer), arena->data_max_size);
+        mem_dealloc(arena->dealloc_strategy, arena->buffer, arena->data_max_size);
         arena->buffer = NULL;
     }
     memclr(arena, sizeof(*arena));

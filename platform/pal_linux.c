@@ -456,6 +456,10 @@ bool
 pal_munmap( void* addr, size_t size )
 {
     int unmap_result = munmap(addr, size);
+    if (unmap_result != 0)
+    {
+        perror("Failed Munmap call");
+    }
     return (unmap_result == 0);
 }
 

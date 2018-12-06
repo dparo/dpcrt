@@ -35,7 +35,7 @@
    the applications */
 // Enable the memory layer debug code
 #ifndef MEMORY_LAYER_DEBUG_CODE
-#  define MEMORY_LAYER_DEBUG_CODE ((1) && __DEBUG)
+#  define MEMORY_LAYER_DEBUG_CODE ((0) && __DEBUG)
 #endif
 
 /*
@@ -53,7 +53,7 @@
    that are not ready to conform to a marena growing at any moment.
    Remember to store `mem_ref_t` and not raw pointers ! */
 #ifndef MEMORY_ARENA_ALWAYS_FORCE_REALLOC_AT_EVERY_PUSH
-#  define MEMORY_ARENA_ALWAYS_FORCE_REALLOC_AT_EVERY_PUSH ((1) && __DEBUG)
+#  define MEMORY_ARENA_ALWAYS_FORCE_REALLOC_AT_EVERY_PUSH ((0) && __DEBUG)
 #endif
 
 #endif  /* HGUARD_5dc6b1c89a724ccfa1561f08d7344951 */
