@@ -235,7 +235,7 @@ pal_closefile(FileHandle fh)
 static inline int
 prot_flags__convert(enum page_prot_flags prot)
 {
-    int result = 0;
+    int result = PROT_NONE;
     if ( prot & PAGE_PROT_READ ) {
         result |= PROT_READ;
     }
@@ -318,7 +318,16 @@ pal_reserve_addr_space(void *addr, size_t size)
 bool
 pal_commit_addr_space (void *addr, size_t size, enum page_prot_flags prot)
 {
-    return pal_mprotect(addr, PAGE_ALIGN(size), prot);
+    bool result = pal_mprotect(addr, PAGE_ALIGN(size), prot);
+    madvise(addr, PAGE_ALIGN(size), MADV_WILLNEED);
+    return result;
+}
+
+bool
+pal_uncommit_addr_space(void *addr, size_t size)
+{
+    int advise_result = madvise(addr, PAGE_ALIGN(size), MADV_DONTNEED);
+    return (advise_result == 0);
 }
 
 bool

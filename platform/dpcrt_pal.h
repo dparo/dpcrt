@@ -233,9 +233,10 @@ pal_munmap( void* addr, size_t size );
    which is not actually committed onto physical memory. 
    This is equivalent to `VirtualAlloc` with `MEM_RESERVE` `MEM_COMMIT`
    flags. */
-void* pal_reserve_addr_space(void *addr, size_t size);
-bool  pal_commit_addr_space (void *addr, size_t size, enum page_prot_flags prot);
-bool  pal_release_addr_space(void *addr, size_t size);
+void*  pal_reserve_addr_space   (void *addr, size_t size);
+bool   pal_commit_addr_space    (void *addr, size_t size, enum page_prot_flags prot);
+bool   pal_uncommit_addr_space  (void *addr, size_t size);
+bool   pal_release_addr_space   (void *addr, size_t size);
 
 
 
