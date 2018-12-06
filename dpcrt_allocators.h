@@ -156,19 +156,23 @@ typedef BufferU32 MallocBasedStackAllocator;
 #endif
 
 
-typedef union FreeListBlock
+typedef struct FreeListBlock
 {
-    union FreeListBlock *next_block;
+    /* Flag marking if ALL the following blocks up to the end of the
+       chunk are freed independently of the value assumed from `next_block`.
+       This flag is an optimization cause it allows when `clearing` an entire
+       chunk to avoid scanning the entire chunk to set up all the linked list of blocks
+       pointer, instead we clear only the first block and set that the subsequent
+       `following_blocks_are_all_free` to true. */
+    bool32 following_blocks_are_all_free;
+    struct FreeListBlock *next_block;
     /* ... PAYLOAD .... */
 } FreeListBlock;
 
 typedef struct FreeListChunk
 {
-    bool8 is_filling_up;
-    
-    /* ---- */
     struct FreeListChunk *next_chunk;
-    union  FreeListBlock *next_block;
+    struct FreeListBlock *next_block;
 
     /* ---- */
     U8 payload[];
