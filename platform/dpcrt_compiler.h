@@ -133,7 +133,7 @@ __BEGIN_DECLS
 #  define ATTRIB_LEAF             __attribute__((leaf))
 #  define ATTRIB_NOTHROW          __attribute__((nothrow))
 #  define ATTRIB_PRINTF(STRING_INDEX, FIRST_TO_CHECK) __attribute__ ((format(printf, (STRING_INDEX), (FIRST_TO_CHECK))))
-
+#  define ATTRIB_WEAK             __attribute__((weak))
 
 #elif defined (_MSC_VER) && (_MSC_VER >= 1500)
 
@@ -165,7 +165,7 @@ __BEGIN_DECLS
 #  define ATTRIB_PURE
 #  define ATTRIB_CONST
 #  define ATTRIB_FUNCTIONAL ATTRIB_CONST
-
+#  define ATTRIB_WEAK          __declspec(selectany)
 
 #else
 #  error "Not supported platform, or need to add it yourself"

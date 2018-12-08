@@ -84,7 +84,7 @@ static const FileHandle Invalid_FileHandle = -1;
 static const FileHandle Stdin_FileHandle   = 0;
 static const FileHandle Stdout_FileHandle  = 1;
 static const FileHandle Stderr_FileHandle  = 2;
-static const DllHandle  Invalid_DllHandle = 0;
+static const DllHandle  Invalid_DllHandle  = 0;
 
 
 #elif __PAL_WINDOWS__
