@@ -24,6 +24,7 @@
 
 #include "dpcrt_types.h"
 #include "dpcrt_utils.h"
+#include "dpcrt_mem.h"
 
 
 __BEGIN_DECLS
@@ -43,41 +44,43 @@ typedef struct AllocationChunk
 
 
 
-typedef struct FreeListBlock
+typedef struct MPoolBlock
 {
     /* Flag marking if ALL the following blocks up to the end of the
        chunk are freed independently of the value assumed from `next_block` field.
-       This flag is not strictly necessary to make the freelist working but is
+       This flag is not strictly necessary to make the mpool working but is
        instead an optimization. It allows when `clearing` an entire
        chunk to avoid scanning the entire said chunk to set up all the linked list of blocks
        pointer, instead we clear only the first block and set the subsequent
        `following_blocks_are_all_free` field to true. */
     bool32 following_blocks_are_all_free;
-    struct FreeListBlock *next_block;
+    struct MPoolBlock *next_block;
     /* ... PAYLOAD .... */
-} FreeListBlock;
+} MPoolBlock;
 
-typedef struct FreeListChunk
+typedef struct MPoolChunk
 {
-    struct FreeListChunk *next_chunk;
-    struct FreeListBlock *next_block;
+    struct MPoolChunk *next_chunk;
+    struct MPoolBlock *next_block;
 
     /* ---- */
     U8 payload[];
-} FreeListChunk;
+} MPoolChunk;
 
-typedef struct FreeList
+
+
+typedef struct MPool
 {
     U32   chunk_size;
     U16   block_size;
     bool8 allocate_more_chunks_on_demand;
-    
-    FreeListChunk *first_chunk;
-} FreeList;
+
+    MPoolChunk *first_chunk;
+} MPool;
 
 
 
-/* Simple FreeList Allocator
+/* Simple MPool Allocator
    The block size determines the maximum possible
    allocatable size ( a high block_size value may
    lead to high internal memory fragmentation ).
@@ -85,25 +88,164 @@ typedef struct FreeList
    EXAMPLE:
    ---
    {
-       FreeList freelist;
-       freelist_init_aux(&freelist, (U32) KILOBYTES(64), 512, true); // Inits the arena asking for the OS to map memory. Each block will be able to store only 512 bytes or less
-       void *p = freelist_alloc(freelist, 64);           // Since 64 bytes fits in 512 bytes the allocator will align the size
+       MPool mpool;
+       mpool_init_aux(&mpool, (U32) KILOBYTES(64), 512, true); // Inits the arena asking for the OS to map memory. Each block will be able to store only 512 bytes or less
+       void *p = mpool_alloc(mpool, 64);           // Since 64 bytes fits in 512 bytes the allocator will align the size
                                                          //    to 512 bytes and return you a block of 512 bytes
-       void *q = freelist_alloc(freelist, 1024);         // returns NULL, the allocator cannot fit 1024 bytes of data
-       freelist_free(freelist, p);                       // frees the block associated to pointer q
-       freelist_clear(freelist);                         // frees EVERY BLOCK, but the actual memory is not unmapped, and it will be reused in subsequent `_alloc` calls
-       freelist_del(freelist);                           // Invalidates the freelist, unmaps the memory letting the OS reclaim it
+       void *q = mpool_alloc(mpool, 1024);         // returns NULL, the allocator cannot fit 1024 bytes of data
+       mpool_free(mpool, p);                       // frees the block associated to pointer q
+       mpool_clear(mpool);                         // frees EVERY BLOCK, but the actual memory is not unmapped, and it will be reused in subsequent `_alloc` calls
+       mpool_del(mpool);                           // Invalidates the mpool, unmaps the memory letting the OS reclaim it
    }
 */
 
 /* @NOTE :: `allocate_more_chunks_on_demand` allows the arena to try ask the OS to map more memory
    if it is required in order to fit a new allocation request. */
-bool  freelist_init_aux (FreeList *freelist, U32 chunk_size, U16 block_size, bool8 allocate_more_chunks_on_demand );
-bool  freelist_init     (FreeList *freelist, U16 block_size);
-void* freelist_alloc    (FreeList *freelist, U16 size);
-void  freelist_free     (FreeList *freelist, void *ptr);
-void  freelist_clear    (FreeList *freelist);
-void  freelist_del      (FreeList *freelist);
+bool  mpool_init_aux (MPool *mpool, U32 chunk_size, U16 block_size, bool8 allocate_more_chunks_on_demand );
+bool  mpool_init     (MPool *mpool, U16 block_size);
+void* mpool_alloc    (MPool *mpool, U16 size);
+void  mpool_free     (MPool *mpool, void *ptr);
+void  mpool_clear    (MPool *mpool);
+void  mpool_del      (MPool *mpool);
+
+
+
+typedef struct MArenaAtomicAllocationContext
+{
+    bool32 failed;
+    U32    staging_size;
+} MArenaAtomicAllocationContext;
+
+#define MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE (16)
+
+typedef struct MArena {
+    /* For internal usage only */
+    MArenaAtomicAllocationContext alloc_context;
+    enum AllocStrategy   alloc_strategy;
+    enum ReallocStrategy realloc_strategy;
+    enum DeallocStrategy dealloc_strategy;
+    /* ------------------- */
+
+    U32                   data_size;
+    U32                   data_max_size;
+
+    U8* buffer;
+} MArena;
+
+
+MArena           marena_new_aux        ( enum AllocStrategy alloc_strategy,
+                                         enum ReallocStrategy realloc_strategy,
+                                         enum DeallocStrategy dealloc_strategy,
+                                         U32 size );
+MArena           marena_new            ( U32 size, bool may_grow );
+void             marena_del            ( MArena *arena );
+
+void             marena_pop_upto       ( MArena *arena, mem_ref_t ref );
+void             marena_fetch          ( MArena *arena, mem_ref_t ref, void *output, U32 sizeof_elem );
+void             marena_clear          ( MArena *arena );
+
+
+/* Beging an atomic allocation context, you can start building up data incrementally
+   directly on the arena. When calling `marena_commit` the data built up to that
+   moment if there wasn't any error is going to be commited updating the `stack_pointer`
+   and making the data actually ""visible"" to the user by returning a valid `mem_ref_t` to
+   it.
+   If you want to abort an atomic allocation context call `marena_dismiss`
+   The `marena_add_xxxx` functionality allows you to construct data incrementally. They
+   all return a bool saying if the request successed. You can choose to handle
+   the failure right away by calling `marena_dismiss`, or just pretend
+   nothing happened and keep pushing to it, once you will call `marena_commit`
+   the function will return you a `mem_ref_t = 0` since one of the allocation failed.
+
+   Between `marena_add_xxx` calls no alignment will be performed from the stack allocator,
+   if you want alignment for performance reasons you must ask it explicitly.
+*/
+void             marena_begin              (MArena *arena);
+
+bool             marena_add                (MArena *arena, U32 sizeof_data, bool initialize_to_zero );
+bool             marena_add_data           (MArena *arena, void *data, U32 sizeof_data );
+bool             marena_add_pointer        (MArena *arena, void *pointer);
+bool             marena_add_byte           (MArena *arena, byte_t b );
+bool             marena_add_char           (MArena *arena, char c );
+bool             marena_add_i8             (MArena *arena, I8 i8 );
+bool             marena_add_u8             (MArena *arena, U8 u8 );
+bool             marena_add_i16            (MArena *arena, I16 i16 );
+bool             marena_add_u16            (MArena *arena, U16 u16 );
+bool             marena_add_i32            (MArena *arena, I32 i32 );
+bool             marena_add_u32            (MArena *arena, U32 u32 );
+bool             marena_add_i64            (MArena *arena, I64 i64 );
+bool             marena_add_u64            (MArena *arena, U64 u64 );
+bool             marena_add_size_t         (MArena *arena, size_t s );
+bool             marena_add_usize          (MArena *arena, usize us );
+bool             marena_add_cstr           (MArena *arena, char* cstr );
+bool             marena_add_pstr32         (MArena *arena, PStr32 *pstr32 );
+bool             marena_add_str32_nodata   (MArena *arena, Str32 str32 );
+bool             marena_add_str32_withdata (MArena *arena, Str32 str32 );
+bool             marena_ask_alignment      (MArena *arena, U32 alignment);
+
+
+void             marena_dismiss            (MArena *arena);
+mem_ref_t        marena_commit             (MArena *arena);
+
+
+
+
+
+mem_ref_t marena_push                (MArena *arena, U32 sizeof_data, bool initialize_to_zero );
+mem_ref_t marena_push_data           (MArena *arena, void *data, U32 sizeof_data );
+mem_ref_t marena_push_pointer        (MArena *arena, void *pointer);
+mem_ref_t marena_push_byte           (MArena *arena, byte_t b );
+mem_ref_t marena_push_char           (MArena *arena, char c );
+mem_ref_t marena_push_i8             (MArena *arena, I8 i8 );
+mem_ref_t marena_push_u8             (MArena *arena, U8 u8 );
+mem_ref_t marena_push_i16            (MArena *arena, I16 i16 );
+mem_ref_t marena_push_u16            (MArena *arena, U16 u16 );
+mem_ref_t marena_push_i32            (MArena *arena, I32 i32 );
+mem_ref_t marena_push_u32            (MArena *arena, U32 u32 );
+mem_ref_t marena_push_i64            (MArena *arena, I64 i64 );
+mem_ref_t marena_push_u64            (MArena *arena, U64 u64 );
+mem_ref_t marena_push_size_t         (MArena *arena, size_t s );
+mem_ref_t marena_push_usize          (MArena *arena, usize us );
+mem_ref_t marena_push_cstr           (MArena *arena, char* cstr );
+mem_ref_t marena_push_pstr32         (MArena *arena, PStr32 *pstr32 );
+mem_ref_t marena_push_str32_nodata   (MArena *arena, Str32 str32 );
+mem_ref_t marena_push_str32_withdata (MArena *arena, Str32 str32 );
+mem_ref_t marena_push_alignment      (MArena *arena, U32 alignment);
+
+
+
+
+
+
+
+static inline void *
+marena_unpack_ref__unsafe(MArena *arena, mem_ref_t ref)
+{
+    assert(arena->buffer);
+    assert(arena->data_size);
+    assert(ref && ref >= MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE && ref < arena->data_size);
+
+
+    {
+        /* @NOTE(dparo) [Mon Nov 26 22:05:28 CET 2018]
+
+           It is not very polite to ask to access a raw pointer
+           while in the middle of a `marena_begin` call.
+           Make sure to commit or discard before accessing raw pointers.
+           If you fill that this restriction is too severe remove this assert.
+        */
+        assert(arena->alloc_context.staging_size == 0);
+    }
+
+    if (ref && ref >= MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE && ref < arena->data_size)
+    {
+        return (void*) ((U8*) arena->buffer + ref);
+    }
+    else
+    {
+        return 0;
+    }
+}
 
 
 __END_DECLS

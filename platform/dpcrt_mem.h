@@ -32,7 +32,7 @@
 
 __BEGIN_DECLS
 
-enum alloc_strategy {
+enum AllocStrategy {
     AllocStrategy_Xmalloc       = 0,
     AllocStrategy_Malloc        = 1,
     AllocStrategy_Xcalloc       = 2,
@@ -44,7 +44,7 @@ enum alloc_strategy {
 
 
 
-enum realloc_strategy {
+enum ReallocStrategy {
     ReallocStrategy_None            = 0,
     ReallocStrategy_Xrealloc        = 1,
     ReallocStrategy_Realloc         = 2,
@@ -56,7 +56,7 @@ enum realloc_strategy {
                                          // the memory region in the same virtual address space
 };
 
-enum dealloc_strategy {
+enum DeallocStrategy {
     DeallocStrategy_Free = 0,
     DeallocStrategy_Munmap = 1,
 };
@@ -74,12 +74,12 @@ void* mem_mmap(size_t size);
 void  mem_unmap(void *addr, size_t size);
 
 void*
-mem_alloc( enum alloc_strategy alloc_strategy,
+mem_alloc( enum AllocStrategy alloc_strategy,
            size_t size,
            size_t alignment );
 
 void*
-mem_realloc__release ( enum realloc_strategy realloc_strategy,
+mem_realloc__release ( enum ReallocStrategy realloc_strategy,
                        void  *old_addr,
                        size_t old_size,
                        size_t new_size,
@@ -87,7 +87,7 @@ mem_realloc__release ( enum realloc_strategy realloc_strategy,
 
 #if MEMORY_LAYER_DEBUG_CODE
 void*
-mem_realloc__debug ( enum realloc_strategy realloc_strategy,
+mem_realloc__debug ( enum ReallocStrategy realloc_strategy,
                      void  *old_addr,
                      size_t old_size,
                      size_t new_size,
@@ -106,7 +106,7 @@ mem_realloc__debug ( enum realloc_strategy realloc_strategy,
 
 #if 0
 void *
-mem_realloc ( enum realloc_strategy realloc_strategy,
+mem_realloc ( ReallocStrategy realloc_strategy,
               void  *addr,
               size_t old_size,
               size_t new_size,
@@ -114,7 +114,7 @@ mem_realloc ( enum realloc_strategy realloc_strategy,
 #endif
 
 void
-mem_dealloc (enum dealloc_strategy dealloc_strategy,
+mem_dealloc (enum DeallocStrategy dealloc_strategy,
              void *addr,
              size_t  buffer_size);
 
@@ -129,143 +129,6 @@ xrealloc (void *ptr, size_t newsize );
 
 
 
-
-typedef struct MArenaAtomicAllocationContext
-{
-    bool32 failed;
-    U32    staging_size;
-} MArenaAtomicAllocationContext;
-
-#define MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE (16)
-
-typedef struct marena {
-    /* For internal usage only */
-    MArenaAtomicAllocationContext alloc_context;
-    enum alloc_strategy   alloc_strategy;
-    enum realloc_strategy realloc_strategy;
-    enum dealloc_strategy dealloc_strategy;
-    /* ------------------- */
-
-    U32                   data_size;
-    U32                   data_max_size;
-    
-    U8* buffer;
-} marena_t;
-
-
-struct marena    marena_new_aux        ( enum alloc_strategy alloc_strategy,
-                                         enum realloc_strategy realloc_strategy,
-                                         enum dealloc_strategy dealloc_strategy,
-                                         U32 size );
-struct marena    marena_new            ( U32 size, bool may_grow );
-void             marena_del            ( struct marena *arena );
-
-void             marena_pop_upto       ( struct marena *arena, mem_ref_t ref );
-void             marena_fetch          ( struct marena *arena, mem_ref_t ref, void *output, U32 sizeof_elem );
-void             marena_clear          ( struct marena *arena );
-
-
-/* Beging an atomic allocation context, you can start building up data incrementally
-   directly on the arena. When calling `marena_commit` the data built up to that
-   moment if there wasn't any error is going to be commited updating the `stack_pointer`
-   and making the data actually ""visible"" to the user by returning a valid `mem_ref_t` to
-   it.
-   If you want to abort an atomic allocation context call `marena_dismiss`
-   The `marena_add_xxxx` functionality allows you to construct data incrementally. They
-   all return a bool saying if the request successed. You can choose to handle
-   the failure right away by calling `marena_dismiss`, or just pretend
-   nothing happened and keep pushing to it, once you will call `marena_commit`
-   the function will return you a `mem_ref_t = 0` since one of the allocation failed.
-
-   Between `marena_add_xxx` calls no alignment will be performed from the stack allocator,
-   if you want alignment for performance reasons you must ask it explicitly.
-*/
-void             marena_begin              (struct marena *arena);
-
-bool             marena_add                (struct marena *arena, U32 sizeof_data, bool initialize_to_zero );
-bool             marena_add_data           (struct marena *arena, void *data, U32 sizeof_data );
-bool             marena_add_pointer        (struct marena *arena, void *pointer);
-bool             marena_add_byte           (struct marena *arena, byte_t b );
-bool             marena_add_char           (struct marena *arena, char c );
-bool             marena_add_i8             (struct marena *arena, I8 i8 );
-bool             marena_add_u8             (struct marena *arena, U8 u8 );
-bool             marena_add_i16            (struct marena *arena, I16 i16 );
-bool             marena_add_u16            (struct marena *arena, U16 u16 );
-bool             marena_add_i32            (struct marena *arena, I32 i32 );
-bool             marena_add_u32            (struct marena *arena, U32 u32 );
-bool             marena_add_i64            (struct marena *arena, I64 i64 );
-bool             marena_add_u64            (struct marena *arena, U64 u64 );
-bool             marena_add_size_t         (struct marena *arena, size_t s );
-bool             marena_add_usize          (struct marena *arena, usize us );
-bool             marena_add_cstr           (struct marena *arena, char* cstr );
-bool             marena_add_pstr32         (struct marena *arena, PStr32 *pstr32 );
-bool             marena_add_str32_nodata   (struct marena *arena, Str32 str32 );
-bool             marena_add_str32_withdata (struct marena *arena, Str32 str32 );
-bool             marena_ask_alignment      (struct marena *arena, U32 alignment);
-
-
-void             marena_dismiss            (struct marena *arena);
-mem_ref_t        marena_commit             (struct marena *arena);
-
-
-
-
-
-mem_ref_t marena_push                (struct marena *arena, U32 sizeof_data, bool initialize_to_zero );
-mem_ref_t marena_push_data           (struct marena *arena, void *data, U32 sizeof_data );
-mem_ref_t marena_push_pointer        (struct marena *arena, void *pointer);
-mem_ref_t marena_push_byte           (struct marena *arena, byte_t b );
-mem_ref_t marena_push_char           (struct marena *arena, char c );
-mem_ref_t marena_push_i8             (struct marena *arena, I8 i8 );
-mem_ref_t marena_push_u8             (struct marena *arena, U8 u8 );
-mem_ref_t marena_push_i16            (struct marena *arena, I16 i16 );
-mem_ref_t marena_push_u16            (struct marena *arena, U16 u16 );
-mem_ref_t marena_push_i32            (struct marena *arena, I32 i32 );
-mem_ref_t marena_push_u32            (struct marena *arena, U32 u32 );
-mem_ref_t marena_push_i64            (struct marena *arena, I64 i64 );
-mem_ref_t marena_push_u64            (struct marena *arena, U64 u64 );
-mem_ref_t marena_push_size_t         (struct marena *arena, size_t s );
-mem_ref_t marena_push_usize          (struct marena *arena, usize us );
-mem_ref_t marena_push_cstr           (struct marena *arena, char* cstr );
-mem_ref_t marena_push_pstr32         (struct marena *arena, PStr32 *pstr32 );
-mem_ref_t marena_push_str32_nodata   (struct marena *arena, Str32 str32 );
-mem_ref_t marena_push_str32_withdata (struct marena *arena, Str32 str32 );
-mem_ref_t marena_push_alignment      (struct marena *arena, U32 alignment);
-
-
-
-
-
-
-
-static inline void *
-marena_unpack_ref__unsafe(struct marena *arena, mem_ref_t ref)
-{
-    assert(arena->buffer);
-    assert(arena->data_size);
-    assert(ref && ref >= MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE && ref < arena->data_size);
-
-
-    {
-        /* @NOTE(dparo) [Mon Nov 26 22:05:28 CET 2018]
-       
-           It is not very polite to ask to access a raw pointer
-           while in the middle of a `marena_begin` call.
-           Make sure to commit or discard before accessing raw pointers.
-           If you fill that this restriction is too severe remove this assert. 
-        */
-        assert(arena->alloc_context.staging_size == 0);
-    }
-    
-    if (ref && ref >= MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE && ref < arena->data_size)
-    {
-        return (void*) ((U8*) arena->buffer + ref);
-    }
-    else
-    {
-        return 0;
-    }
-}
 
 __END_DECLS
 
