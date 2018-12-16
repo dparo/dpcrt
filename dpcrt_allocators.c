@@ -466,7 +466,7 @@ marena_new_aux ( enum AllocStrategy alloc_strategy,
     {
         marena.buffer = buffer;
         // We're going to reserve the first 64 bytes
-        // so we can return `mem_ref_t` (indices to the buffer)
+        // so we can return `MemRef` (indices to the buffer)
         // that do not start at zero
         marena.data_size = MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE;
         marena.data_max_size = size;
@@ -523,7 +523,7 @@ marena_clear(MArena *arena)
 
 
 void
-marena_pop_upto(MArena *arena, mem_ref_t ref)
+marena_pop_upto(MArena *arena, MemRef ref)
 {
     assert_valid_marena(arena);
     assert(arena->alloc_context.staging_size == 0);
@@ -542,7 +542,7 @@ marena_pop_upto(MArena *arena, mem_ref_t ref)
 }
 
 void
-marena_fetch( MArena *arena, mem_ref_t ref, void *output, U32 sizeof_elem )
+marena_fetch( MArena *arena, MemRef ref, void *output, U32 sizeof_elem )
 {
     void *ptr = marena_unpack_ref__unsafe(arena, ref);
     assert(ptr);
@@ -578,10 +578,10 @@ marena_dismiss (MArena *arena)
 }
 
 
-mem_ref_t
+MemRef
 marena_commit (MArena *arena)
 {
-    mem_ref_t ref = 0;
+    MemRef ref = 0;
 
     assert_valid_marena(arena);
     assert(arena->alloc_context.staging_size >= arena->data_size);
@@ -1004,23 +1004,23 @@ marena_ask_alignment(MArena *arena, U32 alignment)
     return marena_commit(arena);                \
 
 
-mem_ref_t marena_push                (MArena *arena, U32 size, bool initialize_to_zero )         { MARENA_PUSH_WRAPPER_DEF(marena_add                (arena, size, initialize_to_zero)) }
-mem_ref_t marena_push_data           (MArena *arena, void *data, U32 sizeof_data )               { MARENA_PUSH_WRAPPER_DEF(marena_add_data           (arena, data, sizeof_data)) }
-mem_ref_t marena_push_pointer        (MArena *arena, void *pointer)                              { MARENA_PUSH_WRAPPER_DEF(marena_add_pointer        (arena, pointer)) }
-mem_ref_t marena_push_byte           (MArena *arena, byte_t b )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_byte           (arena, b )) }
-mem_ref_t marena_push_char           (MArena *arena, char c )                                    { MARENA_PUSH_WRAPPER_DEF(marena_add_char           (arena, c )) }
-mem_ref_t marena_push_i8             (MArena *arena, I8 i8 )                                     { MARENA_PUSH_WRAPPER_DEF(marena_add_i8             (arena, i8 )) }
-mem_ref_t marena_push_u8             (MArena *arena, U8 u8 )                                     { MARENA_PUSH_WRAPPER_DEF(marena_add_u8             (arena, u8 )) }
-mem_ref_t marena_push_i16            (MArena *arena, I16 i16 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i16            (arena, i16 )) }
-mem_ref_t marena_push_u16            (MArena *arena, U16 u16 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u16            (arena, u16 )) }
-mem_ref_t marena_push_i32            (MArena *arena, I32 i32 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i32            (arena, i32 )) }
-mem_ref_t marena_push_u32            (MArena *arena, U32 u32 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u32            (arena, u32 )) }
-mem_ref_t marena_push_i64            (MArena *arena, I64 i64 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i64            (arena, i64 )) }
-mem_ref_t marena_push_u64            (MArena *arena, U64 u64 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u64            (arena, u64 )) }
-mem_ref_t marena_push_size_t         (MArena *arena, size_t s )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_size_t         (arena, s )) }
-mem_ref_t marena_push_usize          (MArena *arena, usize us )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_usize          (arena, us )) }
-mem_ref_t marena_push_cstr           (MArena *arena, char* cstr )                                { MARENA_PUSH_WRAPPER_DEF(marena_add_cstr           (arena, cstr )) }
-mem_ref_t marena_push_pstr32         (MArena *arena, PStr32 *pstr32 )                            { MARENA_PUSH_WRAPPER_DEF(marena_add_pstr32        (arena, pstr32 )) }
-mem_ref_t marena_push_str32_nodata   (MArena *arena, Str32 str32 )                               { MARENA_PUSH_WRAPPER_DEF(marena_add_str32_nodata   (arena, str32 )) }
-mem_ref_t marena_push_str32_withdata (MArena *arena, Str32 str32 )                               { MARENA_PUSH_WRAPPER_DEF(marena_add_str32_withdata (arena, str32 )) }
-mem_ref_t marena_push_alignment      (MArena *arena, U32 alignment)                              { MARENA_PUSH_WRAPPER_DEF(marena_ask_alignment      (arena, alignment)) }
+MemRef marena_push                (MArena *arena, U32 size, bool initialize_to_zero )         { MARENA_PUSH_WRAPPER_DEF(marena_add                (arena, size, initialize_to_zero)) }
+MemRef marena_push_data           (MArena *arena, void *data, U32 sizeof_data )               { MARENA_PUSH_WRAPPER_DEF(marena_add_data           (arena, data, sizeof_data)) }
+MemRef marena_push_pointer        (MArena *arena, void *pointer)                              { MARENA_PUSH_WRAPPER_DEF(marena_add_pointer        (arena, pointer)) }
+MemRef marena_push_byte           (MArena *arena, byte_t b )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_byte           (arena, b )) }
+MemRef marena_push_char           (MArena *arena, char c )                                    { MARENA_PUSH_WRAPPER_DEF(marena_add_char           (arena, c )) }
+MemRef marena_push_i8             (MArena *arena, I8 i8 )                                     { MARENA_PUSH_WRAPPER_DEF(marena_add_i8             (arena, i8 )) }
+MemRef marena_push_u8             (MArena *arena, U8 u8 )                                     { MARENA_PUSH_WRAPPER_DEF(marena_add_u8             (arena, u8 )) }
+MemRef marena_push_i16            (MArena *arena, I16 i16 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i16            (arena, i16 )) }
+MemRef marena_push_u16            (MArena *arena, U16 u16 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u16            (arena, u16 )) }
+MemRef marena_push_i32            (MArena *arena, I32 i32 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i32            (arena, i32 )) }
+MemRef marena_push_u32            (MArena *arena, U32 u32 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u32            (arena, u32 )) }
+MemRef marena_push_i64            (MArena *arena, I64 i64 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i64            (arena, i64 )) }
+MemRef marena_push_u64            (MArena *arena, U64 u64 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u64            (arena, u64 )) }
+MemRef marena_push_size_t         (MArena *arena, size_t s )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_size_t         (arena, s )) }
+MemRef marena_push_usize          (MArena *arena, usize us )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_usize          (arena, us )) }
+MemRef marena_push_cstr           (MArena *arena, char* cstr )                                { MARENA_PUSH_WRAPPER_DEF(marena_add_cstr           (arena, cstr )) }
+MemRef marena_push_pstr32         (MArena *arena, PStr32 *pstr32 )                            { MARENA_PUSH_WRAPPER_DEF(marena_add_pstr32        (arena, pstr32 )) }
+MemRef marena_push_str32_nodata   (MArena *arena, Str32 str32 )                               { MARENA_PUSH_WRAPPER_DEF(marena_add_str32_nodata   (arena, str32 )) }
+MemRef marena_push_str32_withdata (MArena *arena, Str32 str32 )                               { MARENA_PUSH_WRAPPER_DEF(marena_add_str32_withdata (arena, str32 )) }
+MemRef marena_push_alignment      (MArena *arena, U32 alignment)                              { MARENA_PUSH_WRAPPER_DEF(marena_ask_alignment      (arena, alignment)) }

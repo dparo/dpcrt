@@ -110,6 +110,21 @@ void  mpool_del      (MPool *mpool);
 
 
 
+
+
+
+
+
+
+
+// @IMPORTANT @NOTE: a MemRef with a 0 rel_offset value should be considered invalid and not pointing
+//  to something usefull. Implementations of memory allocators making use of this
+//  `MemRef` should skip 1 byte after the creation in order to reserve the zero-eth offset.
+//   Usually a MemRef is implemented with a index (relative offset)
+typedef U32 MemRef;
+
+
+
 typedef struct MArenaAtomicAllocationContext
 {
     bool32 failed;
@@ -140,22 +155,22 @@ MArena           marena_new_aux        ( enum AllocStrategy alloc_strategy,
 MArena           marena_new            ( U32 size, bool may_grow );
 void             marena_del            ( MArena *arena );
 
-void             marena_pop_upto       ( MArena *arena, mem_ref_t ref );
-void             marena_fetch          ( MArena *arena, mem_ref_t ref, void *output, U32 sizeof_elem );
+void             marena_pop_upto       ( MArena *arena, MemRef ref );
+void             marena_fetch          ( MArena *arena, MemRef ref, void *output, U32 sizeof_elem );
 void             marena_clear          ( MArena *arena );
 
 
 /* Beging an atomic allocation context, you can start building up data incrementally
    directly on the arena. When calling `marena_commit` the data built up to that
    moment if there wasn't any error is going to be commited updating the `stack_pointer`
-   and making the data actually ""visible"" to the user by returning a valid `mem_ref_t` to
+   and making the data actually ""visible"" to the user by returning a valid `MemRef` to
    it.
    If you want to abort an atomic allocation context call `marena_dismiss`
    The `marena_add_xxxx` functionality allows you to construct data incrementally. They
    all return a bool saying if the request successed. You can choose to handle
    the failure right away by calling `marena_dismiss`, or just pretend
    nothing happened and keep pushing to it, once you will call `marena_commit`
-   the function will return you a `mem_ref_t = 0` since one of the allocation failed.
+   the function will return you a `MemRef = 0` since one of the allocation failed.
 
    Between `marena_add_xxx` calls no alignment will be performed from the stack allocator,
    if you want alignment for performance reasons you must ask it explicitly.
@@ -185,32 +200,32 @@ bool             marena_ask_alignment      (MArena *arena, U32 alignment);
 
 
 void             marena_dismiss            (MArena *arena);
-mem_ref_t        marena_commit             (MArena *arena);
+MemRef        marena_commit             (MArena *arena);
 
 
 
 
 
-mem_ref_t marena_push                (MArena *arena, U32 sizeof_data, bool initialize_to_zero );
-mem_ref_t marena_push_data           (MArena *arena, void *data, U32 sizeof_data );
-mem_ref_t marena_push_pointer        (MArena *arena, void *pointer);
-mem_ref_t marena_push_byte           (MArena *arena, byte_t b );
-mem_ref_t marena_push_char           (MArena *arena, char c );
-mem_ref_t marena_push_i8             (MArena *arena, I8 i8 );
-mem_ref_t marena_push_u8             (MArena *arena, U8 u8 );
-mem_ref_t marena_push_i16            (MArena *arena, I16 i16 );
-mem_ref_t marena_push_u16            (MArena *arena, U16 u16 );
-mem_ref_t marena_push_i32            (MArena *arena, I32 i32 );
-mem_ref_t marena_push_u32            (MArena *arena, U32 u32 );
-mem_ref_t marena_push_i64            (MArena *arena, I64 i64 );
-mem_ref_t marena_push_u64            (MArena *arena, U64 u64 );
-mem_ref_t marena_push_size_t         (MArena *arena, size_t s );
-mem_ref_t marena_push_usize          (MArena *arena, usize us );
-mem_ref_t marena_push_cstr           (MArena *arena, char* cstr );
-mem_ref_t marena_push_pstr32         (MArena *arena, PStr32 *pstr32 );
-mem_ref_t marena_push_str32_nodata   (MArena *arena, Str32 str32 );
-mem_ref_t marena_push_str32_withdata (MArena *arena, Str32 str32 );
-mem_ref_t marena_push_alignment      (MArena *arena, U32 alignment);
+MemRef marena_push                (MArena *arena, U32 sizeof_data, bool initialize_to_zero );
+MemRef marena_push_data           (MArena *arena, void *data, U32 sizeof_data );
+MemRef marena_push_pointer        (MArena *arena, void *pointer);
+MemRef marena_push_byte           (MArena *arena, byte_t b );
+MemRef marena_push_char           (MArena *arena, char c );
+MemRef marena_push_i8             (MArena *arena, I8 i8 );
+MemRef marena_push_u8             (MArena *arena, U8 u8 );
+MemRef marena_push_i16            (MArena *arena, I16 i16 );
+MemRef marena_push_u16            (MArena *arena, U16 u16 );
+MemRef marena_push_i32            (MArena *arena, I32 i32 );
+MemRef marena_push_u32            (MArena *arena, U32 u32 );
+MemRef marena_push_i64            (MArena *arena, I64 i64 );
+MemRef marena_push_u64            (MArena *arena, U64 u64 );
+MemRef marena_push_size_t         (MArena *arena, size_t s );
+MemRef marena_push_usize          (MArena *arena, usize us );
+MemRef marena_push_cstr           (MArena *arena, char* cstr );
+MemRef marena_push_pstr32         (MArena *arena, PStr32 *pstr32 );
+MemRef marena_push_str32_nodata   (MArena *arena, Str32 str32 );
+MemRef marena_push_str32_withdata (MArena *arena, Str32 str32 );
+MemRef marena_push_alignment      (MArena *arena, U32 alignment);
 
 
 
@@ -219,7 +234,7 @@ mem_ref_t marena_push_alignment      (MArena *arena, U32 alignment);
 
 
 static inline void *
-marena_unpack_ref__unsafe(MArena *arena, mem_ref_t ref)
+marena_unpack_ref__unsafe(MArena *arena, MemRef ref)
 {
     assert(arena->buffer);
     assert(arena->data_size);

@@ -62,14 +62,6 @@ enum DeallocStrategy {
 };
 
 
-
-
-// @IMPORTANT @NOTE: a MemRef with a 0 rel_offset value should be considered invalid and not pointing
-//  to something usefull. Implementations of memory allocators making use of this
-//  `MemRef` should skip 1 byte after the creation in order to reserve the zero-eth offset.
-//   Usually a MemRef is implemented with a index (relative offset)
-typedef U32 mem_ref_t;
-
 void* mem_mmap(size_t size);
 void  mem_unmap(void *addr, size_t size);
 

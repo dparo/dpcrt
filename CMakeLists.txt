@@ -51,7 +51,11 @@ add_library(
   platform/dpcrt_streams.c
 
   dpcrt_allocators.c
-  
+  dpcrt_sync.c
+  dpcrt_threads.c
+
+  lexer/dpcrt_lexer.c
+  lexer/dpcrt_lexer_builtin_logic.c
   )
 
 
@@ -149,7 +153,7 @@ target_link_libraries(dpcrt
 endif()
 
 target_include_directories(dpcrt PUBLIC
-  ./ platform ./math ./memory)
+  ./ platform ./math ./memory ./lexer)
 
 target_include_directories(dpcrt PRIVATE
   ./)
