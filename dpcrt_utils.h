@@ -63,13 +63,13 @@ __BEGIN_DECLS
 #define ALIGN_PTR(N, S) ((void*)(ALIGN ( ((size_t)(N)) , S) ))
 
 
-#define KILOBYTES(x) ((size_t) (x) << 10)
-#define MEGABYTES(x) ((size_t) (KILOBYTES(x)) << 10)
-#define GIGABYTES(x) ((size_t) (MEGABYTES(x)) << 10)
+#define KILOBYTES(x) (((size_t) (x)) << 10)
+#define MEGABYTES(x) ((KILOBYTES(x)) << 10)
+#define GIGABYTES(x) ((MEGABYTES(x)) << 10)
 
-#define KILO(x) ((size_t) (x) << 10)
-#define MEGA(x) ((size_t) (KILO(x)) << 10)
-#define GIGA(x) ((size_t) (MEGA(x)) << 10)
+#define KILO(x) (((size_t) (x)) << 10)
+#define MEGA(x) ((KILOBYTES(x)) << 10)
+#define GIGA(x) ((MEGABYTES(x)) << 10)
 
 #define BIT(TYPE, POSITION) ( ((TYPE) 1 << (TYPE) POSITION ))
 #define enum8(TYPE) I8

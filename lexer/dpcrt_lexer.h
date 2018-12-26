@@ -233,7 +233,7 @@ lexer_deinit ( struct lexer *lex );
 bool
 lexer_next_token(struct lexer *lex,
                  MArena *tokens_arena,
-                 MemRef *token_ref,
+                 MRef *token_ref,
                  enum token_type (*lex_logic) (struct lexer *lex, MArena *tokens_arena));
 
 

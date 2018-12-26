@@ -53,7 +53,7 @@ unwrap_token_text(struct token *token)
 bool
 lexer_next_token(struct lexer *lex,
                  MArena *tokens_arena,
-                 MemRef *token_ref,
+                 MRef *token_ref,
                  enum token_type (*lex_logic) (struct lexer *lex, MArena *tokens_arena))
 {
     *token_ref = 0;
@@ -98,7 +98,7 @@ lexer_next_token(struct lexer *lex,
                 assert(token_type != 0);        
         
                 marena_add_char(tokens_arena, '\0');   /* null-terminate the token->payload.data */
-                MemRef r = marena_commit(tokens_arena);
+                MRef r = marena_commit(tokens_arena);
                 if (!r)
                 {
                     errfmt(lex, LexerErr_OutOfMem, "Failed memory allocation on the output arena");

@@ -78,6 +78,23 @@
 __BEGIN_DECLS
 
 
+
+#define STRINGIFY(x) #x
+#define __AT_SRC__ __FILE__ ":" STRINGIFY(__LINE__)
+#define CONCAT_(a, ...) a ## __VA_ARGS__
+#define CONCAT(a, ...) CONCAT_(a, __VA_ARGS__)
+/* Example of deferring */
+/* #define A() 123 */
+/* A() // Expands to 123 */
+/* DEFER(A)() // Expands to A () because it requires one more scan to fully expand */
+/* EXPAND(DEFER(A)()) // Expands to 123, because the EXPAND macro forces another scan */
+
+#define EMPTY()
+#define DEFER(id) id EMPTY()
+#define OBSTRUCT(...) __VA_ARGS__ DEFER(EMPTY)()
+#define EXPAND(...) __VA_ARGS__
+
+
 /* Standard versions defined by the compiler. Example usage
    # if __STDC_VERSION__ >= C11_STD_VERSION
    {| Do things here that requires at least c11 support |}
@@ -112,7 +129,7 @@ __BEGIN_DECLS
 
 /* Compute the length of a c-string literal known at compile time */
 #define STRLIT_LEN(S) (ARRAY_LEN(S) - 1)
-    
+
 
 
 
@@ -134,6 +151,8 @@ __BEGIN_DECLS
 #  define ATTRIB_NOTHROW          __attribute__((nothrow))
 #  define ATTRIB_PRINTF(STRING_INDEX, FIRST_TO_CHECK) __attribute__ ((format(printf, (STRING_INDEX), (FIRST_TO_CHECK))))
 #  define ATTRIB_WEAK             __attribute__((weak))
+
+#  define ATTRIB_ANNOTATE(...) __attribute__((annotate(__VA_ARGS__)))
 
 #elif defined (_MSC_VER) && (_MSC_VER >= 1500)
 
@@ -166,6 +185,8 @@ __BEGIN_DECLS
 #  define ATTRIB_CONST
 #  define ATTRIB_FUNCTIONAL ATTRIB_CONST
 #  define ATTRIB_WEAK          __declspec(selectany)
+
+#  define ATTRIB_ANNOTATE(...)
 
 #else
 #  error "Not supported platform, or need to add it yourself"
@@ -209,6 +230,16 @@ __BEGIN_DECLS
 #endif
 
 
+#if __METAC_TOOL__
+#  define $META(...) ATTRIB_ANNOTATE(__VA_ARGS__)
+#else
+#  define $META(...)
+#endif
+
+
+#define $INTROSPECT() $META("introspect")
+#define $SERIALIZE()  $META("serialize")
+
 
 # ifndef offsetof
 #   if __GNUC__ || __clang__
@@ -221,26 +252,8 @@ __BEGIN_DECLS
 
 
 
-#define STRINGIFY(x) #x
-#define __AT_SRC__ __FILE__ ":" STRINGIFY(__LINE__)
-#define CONCAT_(a, ...) a ## __VA_ARGS__
-#define CONCAT(a, ...) CONCAT_(a, __VA_ARGS__)
-/* Example of deferring */
-/* #define A() 123 */
-/* A() // Expands to 123 */
-/* DEFER(A)() // Expands to A () because it requires one more scan to fully expand */
-/* EXPAND(DEFER(A)()) // Expands to 123, because the EXPAND macro forces another scan */
-
-#define EMPTY()
-#define DEFER(id) id EMPTY()
-#define OBSTRUCT(...) __VA_ARGS__ DEFER(EMPTY)()
-#define EXPAND(...) __VA_ARGS__
-
-
-
-
 /* ===================================
-   Static Assertion 
+   Static Assertion
    =================================== */
 
 

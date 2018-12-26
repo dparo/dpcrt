@@ -24,9 +24,13 @@
 
 #ifdef MPOOL_DISABLE_DEBUG_ASSERTION
 #  define internal_assert(...)
+#  define internal_assert_msg(...)
 #else
 #  define internal_assert(...) assert(__VA_ARGS__)
+#  define internal_assert_msg(...) assert_msg(__VA_ARGS__)
 #endif
+
+
 
 
 /* ##########################################################################
@@ -66,9 +70,9 @@ mpool_get_chunk_from_addr(MPool *mpool,
 }
 
 static inline void
-assert_block_fits_in_chunk(MPool *mpool,
-                           MPoolChunk *chunk,
-                           MPoolBlock *block)
+mpool__assert_block_fits_in_chunk(MPool *mpool,
+                                  MPoolChunk *chunk,
+                                  MPoolBlock *block)
 {
     (void) mpool, (void) chunk, (void) block;
     if (block)
@@ -79,9 +83,9 @@ assert_block_fits_in_chunk(MPool *mpool,
 }
 
 static inline MPoolBlock *
-get_next_adjacent_block(MPool *mpool,
-                        MPoolChunk *chunk,
-                        MPoolBlock *block)
+mpool__get_next_adjacent_block(MPool *mpool,
+                               MPoolChunk *chunk,
+                               MPoolBlock *block)
 {
     MPoolBlock *result = (MPoolBlock*)
         ((U8*) block + mpool->block_size);
@@ -96,9 +100,9 @@ get_next_adjacent_block(MPool *mpool,
 
 
 static inline void
-mark_block_as_used(MPool *mpool,
-                   MPoolChunk *chunk,
-                   MPoolBlock *block)
+mpool__mark_block_as_used(MPool *mpool,
+                          MPoolChunk *chunk,
+                          MPoolBlock *block)
 {
     internal_assert(chunk->next_block == block);
 
@@ -106,7 +110,7 @@ mark_block_as_used(MPool *mpool,
 
     if (block->following_blocks_are_all_free)
     {
-        next_block = get_next_adjacent_block(mpool, chunk, block);
+        next_block = mpool__get_next_adjacent_block(mpool, chunk, block);
         if (next_block)
         {
             next_block->following_blocks_are_all_free = true;
@@ -117,19 +121,17 @@ mark_block_as_used(MPool *mpool,
         next_block = block->next_block;
     }
 
-    assert_block_fits_in_chunk(mpool, chunk, next_block);
+    mpool__assert_block_fits_in_chunk(mpool, chunk, next_block);
     chunk->next_block = next_block;
 
-    if (next_block)
-    {
-        memclr(block, mpool->block_size);
-    }
+    memclr(block, mpool->block_size);
+    mpool->total_user_memory_usage += mpool->block_size;
 }
 
 static inline void
-mark_block_as_avail(MPool *mpool,
-                    MPoolChunk *chunk,
-                    MPoolBlock *block)
+mpool__mark_block_as_avail(MPool *mpool,
+                           MPoolChunk *chunk,
+                           MPoolBlock *block)
 {
     {
         *block = (MPoolBlock) {0};
@@ -137,14 +139,16 @@ mark_block_as_avail(MPool *mpool,
         block->next_block = chunk->next_block;
     }
 
-    assert_block_fits_in_chunk(mpool, chunk, block);
-    assert_block_fits_in_chunk(mpool, chunk, block->next_block);
+    mpool__assert_block_fits_in_chunk(mpool, chunk, block);
+    mpool__assert_block_fits_in_chunk(mpool, chunk, block->next_block);
     chunk->next_block = block;
+
+    mpool->total_user_memory_usage -= mpool->block_size;
 }
 
 
 static inline void
-mpool_init_chunk(MPoolChunk *chunk)
+mpool__init_chunk(MPoolChunk *chunk)
 {
     chunk->next_chunk    = NULL;
     chunk->next_block    = (MPoolBlock*) ((U8*) chunk
@@ -160,7 +164,7 @@ mpool_new_chunk(U32 chunk_size)
 
     if (newchunk)
     {
-        mpool_init_chunk(newchunk);
+        mpool__init_chunk(newchunk);
     }
 
     return newchunk;
@@ -169,17 +173,41 @@ mpool_new_chunk(U32 chunk_size)
 
 
 static inline MPoolChunk *
-mpool_chain_new_chunk(MPoolChunk *prev_chunk,
-                      U32 chunk_size)
+mpool__chain_new_chunk(MPool *mpool,
+                       MPoolChunk *prev_chunk)
 {
+    U32 chunk_size = mpool->chunk_size;
+    
     MPoolChunk *newchunk = mpool_new_chunk(chunk_size);
-
+    if (newchunk)
+    {
+        mpool->total_allocator_memory_usage += chunk_size;
+    }
+    
     if (prev_chunk)
     {
         prev_chunk->next_chunk = newchunk;
     }
 
     return newchunk;
+}
+
+static inline void
+mpool__del_chunk(MPoolChunk *chunk_to_be_deleted,
+                 U32 chunk_size)
+{
+    mem_unmap(chunk_to_be_deleted, chunk_size);
+}
+
+
+static inline void
+mpool__del_chained_chunk(MPool *mpool,
+                         MPoolChunk *prev_chunk,
+                         MPoolChunk *chunk_to_be_deleted)
+{
+    prev_chunk->next_chunk = chunk_to_be_deleted->next_chunk;
+    mpool->total_allocator_memory_usage -= mpool->chunk_size;
+    mpool__del_chunk(chunk_to_be_deleted, mpool->chunk_size);
 }
 
 
@@ -193,7 +221,7 @@ mpool_free(MPool *mpool, void *_addr)
     if (chunk)
     {
         MPoolBlock *block = (MPoolBlock *) _addr;
-        mark_block_as_avail(mpool, chunk, block);
+        mpool__mark_block_as_avail(mpool, chunk, block);
     }
 }
 
@@ -209,7 +237,7 @@ mpool_clear(MPool *mpool)
     while(chunk)
     {
         MPoolChunk *tmp = chunk->next_chunk;
-        mpool_init_chunk(chunk);
+        mpool__init_chunk(chunk);
         chunk = tmp;
     }
 }
@@ -256,7 +284,7 @@ mpool_alloc(MPool *mpool, U16 size)
     {
         if (mpool->allocate_more_chunks_on_demand)
         {
-            chunk = mpool_chain_new_chunk(chunk, mpool->chunk_size);
+            chunk = mpool__chain_new_chunk(mpool, chunk);
         }
         else
         {
@@ -273,7 +301,7 @@ mpool_alloc(MPool *mpool, U16 size)
         internal_assert(chunk->next_block);
 
         result = (void*) chunk->next_block;
-        mark_block_as_used(mpool, chunk, chunk->next_block);
+        mpool__mark_block_as_used(mpool, chunk, chunk->next_block);
         internal_assert(result);
     }
 
@@ -325,25 +353,507 @@ mpool_init(MPool *mpool, U16 block_size)
 
 
 
+/* #############################################################################
+   MFList Implementation
+   #############################################################################
+ */
+
+
+#define MFLIST_RESERVED_CHUNK_HEADER_SIZE ( ALIGN(sizeof(MFListChunk), 128) )
+
+enum MFListAllocClass
+{
+    MFListAllocClass_512  = 0,
+    MFListAllocClass_4K   = 1,
+    MFListAllocClass_32K  = 2,
+    MFListAllocClass_128K = 3,
+    MFListAllocClass_512K = 4,
+    MFListAllocClass_More = 5,
+    
+    MFListAllocClass_Last,
+};
+
+static const U32 s_mflist_class_sizes[] =
+{
+    KILOBYTES(16),
+    KILOBYTES(32),
+    KILOBYTES(128),
+    KILOBYTES(1024),
+    KILOBYTES(8192),
+    
+    /* Allocations of `MFListChunkSizeIndex_512K` or more size will have a dedicated mmap chunk */
+    0,
+};
+
+static_assert(MFListAllocClass_Last == ARRAY_LEN(s_mflist_class_sizes), "");
+
+
+ATTRIB_CONST static inline MFListBlock *
+mflist__get_first_block_from_chunk(MFListChunk *chunk)
+{
+    MFListBlock *result = ( (MFListBlock *)
+             (  (U8*) chunk + sizeof(MFListChunk))
+             
+        );
+
+    internal_assert( chunk->size > (U8*) result - (U8*) chunk );
+    
+    return result;
+}
+
+
+ATTRIB_PURE static inline MFListBlock *
+mflist__next_block(MFListChunk *chunk,
+                   MFListBlock *block)
+{
+    MFListBlock *result = (MFListBlock *) (
+        (U8*) block + block->size + sizeof(MFListBlock)
+        );
+
+    if ((U8*) result < (U8*) chunk + chunk->size)
+    {
+        return result;
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
+
+typedef struct MFListUserAddrLocation
+{
+    enum MFListAllocClass class;
+    MFListChunk *prev_chunk;    /* Pointer to previous chunk or NULL if it's not present */
+    MFListChunk *chunk;         /* Actual chunk containing the addr */
+    MFListBlock *block;         /* Memory location of the block containing the allocation */
+} MFListUserAddrLocation;
+
+
+ATTRIB_PURE static MFListUserAddrLocation
+mflist__find_user_addr_location(MFList *mflist,
+                                void *_addr)
+{
+    MFListUserAddrLocation result = { 0 };
+    U8 *addr = _addr;
+
+    /* Find The chunk first */
+    for (enum MFListAllocClass class = 0;
+         class < ARRAY_LEN(mflist->chunks);
+         class ++ )
+    {
+        MFListChunk *prev_chunk = NULL;
+        MFListChunk *chunk = mflist->chunks[class];
+        
+        while(chunk)
+        {
+
+            if ((addr > ((U8*) chunk)) && (addr < (((U8*) chunk) + chunk->size)))
+            {
+                result.class = class;
+                result.prev_chunk = prev_chunk;
+                result.chunk = chunk;
+                goto end_chunk_search;
+            }
+
+            prev_chunk = chunk;
+            chunk = chunk->next_chunk;
+        }
+    }
+
+end_chunk_search: { }
+
+    /* Determine the correct block from the chunk */
+    if (result.chunk)
+    {
+        MFListChunk *chunk = result.chunk;
+
+        for (MFListBlock *block = mflist__get_first_block_from_chunk(result.chunk);
+             block;
+             block = mflist__next_block(chunk, block))
+        {
+            if ((U8*) block == (addr + sizeof(MFListBlock)))
+            {
+                result.block = block;
+                break;
+            }
+        }
+    }
+
+
+    return result;
+}
+
+
+static inline void
+mflist__init_chunk(MFListChunk *chunk, U32 chunk_size)
+{
+    chunk->next_chunk = NULL;
+    chunk->size = chunk_size;
+
+    MFListBlock *first_block = mflist__get_first_block_from_chunk(chunk);
+    {
+        *first_block = (MFListBlock) {0};
+        first_block->is_avail = true;
+        first_block->size = chunk->size - (U32) sizeof(MFListChunk) - (U32) sizeof(MFListBlock);
+        first_block->prev_block = NULL;
+    }
+
+    chunk->max_contiguous_block_size_avail = first_block->size;
+}
+
+static inline MFListChunk *
+mflist_new_chunk(U32 chunk_size)
+{
+    assert((chunk_size % PAGE_SIZE) == 0);
+    MFListChunk *newchunk = (MFListChunk*) mem_mmap(chunk_size);
+
+    if (newchunk)
+    {
+        mflist__init_chunk(newchunk, chunk_size);
+    }
+
+    return newchunk;
+}
+
+
+
+static inline MFListChunk *
+mflist__chain_new_chunk(MFList *mflist,
+                        MFListChunk *prev_chunk,
+                        U32 chunk_size)
+{
+    MFListChunk *newchunk = mflist_new_chunk(chunk_size);
+
+    if (newchunk)
+    {
+        mflist->total_allocator_memory_usage += chunk_size;
+    }
+
+    if (prev_chunk)
+    {
+        prev_chunk->next_chunk = newchunk;
+    }
+
+    return newchunk;
+}
+
+
+static inline void
+mflist__del_chunk(MFListChunk *chunk_to_be_deleted)
+{
+    mem_unmap(chunk_to_be_deleted, chunk_to_be_deleted->size);
+}
+
+
+static inline void
+mflist__del_chained_chunk(MFList *mflist,
+                          enum MFListAllocClass class,
+                          MFListChunk *prev_chunk,
+                          MFListChunk *chunk_to_be_deleted)
+{
+    if (prev_chunk)
+    {
+        prev_chunk->next_chunk = chunk_to_be_deleted->next_chunk;
+    }
+    else
+    {
+        internal_assert(class >= 0 && class < MFListAllocClass_Last);
+        mflist->chunks[class] = chunk_to_be_deleted->next_chunk;
+    }
+    mflist->total_allocator_memory_usage -= chunk_to_be_deleted->size;
+    mflist__del_chunk(chunk_to_be_deleted);
+}
 
 
 
 
+ATTRIB_PURE static inline bool
+mflist__is_chunk_empty(MFListChunk *chunk)
+{
+    bool result = true;
+
+    MFListBlock *first_block = mflist__get_first_block_from_chunk(chunk);
+    MFListBlock *next_block = mflist__next_block(chunk, first_block);
+
+    if (first_block && !first_block->is_avail && !next_block)
+    {
+        result = true;
 
 
+        internal_assert(first_block->size == chunk->size - (U32) sizeof(MFListChunk));
+    }
 
 
+    return result;
+}
 
 
+void
+mflist_free(MFList *mflist, void *_addr)
+{
+    MFListUserAddrLocation loc = mflist__find_user_addr_location(mflist, _addr);
+    assert_msg(loc.chunk, "Couldn't find the block requested\n Possible invalid pointer or the chunk got resized (NOTE :: Chunks are not allowed to resize by design : Possible memory corruption)");
+    assert_msg(loc.block, "Couldn't find the block requested\n Possible invalid pointer or the chunk got resized (NOTE :: Chunks are not allowed to resize by design : Possible memory corruption)");
+    assert_msg(!(loc.block->is_avail), "Possible Double free");
+
+    if (loc.class == MFListAllocClass_More && loc.chunk)
+    {
+        mflist__del_chained_chunk(mflist, loc.class, loc.prev_chunk, loc.chunk);
+        return;
+    }
+    
+
+    if (loc.chunk && loc.block)
+    {
+        internal_assert(loc.class);
+        MFListBlock *block = loc.block;
+        
+        MFListBlock *prev_block = block->prev_block;
+        MFListBlock *next_block = mflist__next_block(loc.chunk, block);
+        
+        const U32 block_size_before_dellocation = block->size;
+        U32       combined_size                 = block->size;
+        
+        mflist->total_user_memory_usage -= block_size_before_dellocation;
+
+        /* Try to combine blocks back together */
+        if (prev_block && prev_block->is_avail)
+        {
+            if (next_block && next_block->is_avail)
+            {
+                combined_size = prev_block->size
+                    + (U32) sizeof(MFListBlock) + block->size
+                    + (U32) sizeof(MFListBlock) + next_block->size;
+                prev_block->size = combined_size;
+            }
+            else
+            {
+                combined_size = prev_block->size + (U32) sizeof(MFListBlock) + block->size;
+                prev_block->size = combined_size;
+            }
+        }
+        else
+        {
+            block->is_avail = true;
+            block->prev_block = prev_block;
+            if (next_block && next_block->is_avail)
+            {
+                combined_size = block->size + (U32) sizeof(MFListBlock) + next_block->size;
+                block->size = combined_size;
+            }
+            else if (next_block)
+            {
+                next_block->prev_block = block;
+            }
+            else
+            {
+            }
+        }
+
+        if (combined_size > loc.chunk->max_contiguous_block_size_avail)
+        {
+            loc.chunk->max_contiguous_block_size_avail = combined_size;
+        }
+    }
+}
 
 
+ATTRIB_PURE static inline bool
+mflist__should_del_chunk(MFListChunk *chunk)
+{
+    return ((chunk->size > KILOBYTES(64))
+            || mflist__is_chunk_empty(chunk)
+        );
+}
+
+void
+mflist_clear(MFList *mflist)
+{
+    for (enum MFListAllocClass class = 0; class < ARRAY_LEN(mflist->chunks); class ++ )
+    {
+        MFListChunk *prev_chunk = NULL;
+        MFListChunk *chunk = mflist->chunks[class];
+        
+        if (!chunk)
+        {
+            continue;
+        }
+
+        MFListChunk *tmp = chunk->next_chunk;
+        if (mflist__should_del_chunk(chunk))
+        {
+            mflist__del_chunk(chunk);
+        }
+        else
+        {
+            mflist__init_chunk(chunk, chunk->size);                        
+        }
+
+        prev_chunk = chunk;
+        chunk = tmp;
+        internal_assert(prev_chunk);
+        
+        while (chunk)
+        {
+            tmp = chunk->next_chunk;
+            if (mflist__should_del_chunk(chunk))
+            {
+                mflist__del_chained_chunk(mflist, class, prev_chunk, chunk);
+            }
+            else
+            {                
+                mflist__init_chunk(chunk, chunk->size);
+            }
+            prev_chunk = chunk;
+            chunk = tmp;
+        }
+    }
+}
 
 
+void
+mflist_del(MFList *mflist)
+{
+    assert(mflist->chunks);
+
+    for (enum MFListAllocClass class = 0; class < ARRAY_LEN(mflist->chunks); class ++)
+    {
+        MFListChunk *chunk = mflist->chunks[class];
+        if (!chunk)
+        {
+            continue;
+        }
+
+        
+        while(chunk)
+        {
+            MFListChunk *tmp = chunk->next_chunk;
+            mflist__del_chunk(chunk);
+            chunk = tmp;
+        }
+    }
+
+    memclr(mflist, sizeof(*mflist));
+}
 
 
+void *
+mflist_alloc1(MFList *mflist, U32 size, bool zero_initialize)
+{
+    (void) mflist, (void) size, (void) zero_initialize;
+
+    enum MFListAllocClass class      = MFListAllocClass_More;
+    U32                   class_size = 0;
 
 
+    /* Depending on how big the allocation is find the correct
+       list where to allocate. We use different
+       lists to maintain different order of allocations sizes.
+       In this way we can limit external fragmentation, where
+       big allocation and small allocations may generate high
+       fragmentation inside the chunk */
+    for (enum MFListAllocClass i = 0; i < ARRAY_LEN(mflist->chunks); i++)
+    {
+        if (size <= s_mflist_class_sizes[i])
+        {
+            class = i;
+            class_size = s_mflist_class_sizes[i];
+            break;
+        }
+    }
 
+    /* Allocate the first chunk if it's the first time */
+    if (!mflist->chunks[class])
+    {
+        if (class_size == 0)
+        {
+            mflist->chunks[class_size] = mflist__chain_new_chunk(mflist, NULL, size);
+        }
+        else
+        {
+            mflist->chunks[class_size] = mflist__chain_new_chunk(mflist, NULL, class_size);
+        }
+    }
+
+    if (mflist->chunks[class] == NULL)
+    {
+        return NULL;
+    }
+
+
+    /* Now determine the correct chunk where we should allocate */
+    MFListChunk *chunk = mflist->chunks[class];
+    MFListChunk *allocatable_chunk = NULL;
+    
+    while (chunk)
+    {
+        if (chunk->max_contiguous_block_size_avail >= size)
+        {
+            allocatable_chunk = chunk;
+            break;
+        }
+        else
+        {
+            if (!chunk->next_chunk)
+            {
+                chunk->next_chunk = mflist__chain_new_chunk(mflist, chunk, class_size);
+                if (!chunk->next_chunk)
+                {
+                    break;
+                }
+                else
+                {
+                    allocatable_chunk = chunk->next_chunk;
+                    break;
+                }
+            }
+        }
+        chunk = chunk->next_chunk;
+    }
+
+    if (!allocatable_chunk)
+    {
+        return NULL;
+    }
+
+
+    void *result = NULL;
+
+    internal_assert(allocatable_chunk->max_contiguous_block_size_avail >= size);
+    MFListBlock *block = mflist__get_first_block_from_chunk(chunk);
+
+    /* TODO TODO TODO COMPLETE COMPLETE COMPLETE */
+
+
+    while(block)
+    {
+        if (block->is_avail && block->size >= size)
+        {
+            
+        }
+            
+        block = mflist__next_block(chunk, block);
+    }
+
+    internal_assert_msg(block, "WTF At this point we should have found a valid block where we can allocate");
+    return result;
+
+}
+
+
+bool
+mflist_init(MFList *mflist)
+{
+    memclr(mflist, sizeof(MFList));
+    return true;
+}
+
+
+/* #############################################################################
+   MArena Implementation
+   #############################################################################
+*/
 
 
 
@@ -466,7 +976,7 @@ marena_new_aux ( enum AllocStrategy alloc_strategy,
     {
         marena.buffer = buffer;
         // We're going to reserve the first 64 bytes
-        // so we can return `MemRef` (indices to the buffer)
+        // so we can return `MRef` (indices to the buffer)
         // that do not start at zero
         marena.data_size = MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE;
         marena.data_max_size = size;
@@ -523,7 +1033,7 @@ marena_clear(MArena *arena)
 
 
 void
-marena_pop_upto(MArena *arena, MemRef ref)
+marena_pop_upto(MArena *arena, MRef ref)
 {
     assert_valid_marena(arena);
     assert(arena->alloc_context.staging_size == 0);
@@ -542,7 +1052,7 @@ marena_pop_upto(MArena *arena, MemRef ref)
 }
 
 void
-marena_fetch( MArena *arena, MemRef ref, void *output, U32 sizeof_elem )
+marena_fetch( MArena *arena, MRef ref, void *output, U32 sizeof_elem )
 {
     void *ptr = marena_unpack_ref__unsafe(arena, ref);
     assert(ptr);
@@ -578,10 +1088,10 @@ marena_dismiss (MArena *arena)
 }
 
 
-MemRef
+MRef
 marena_commit (MArena *arena)
 {
-    MemRef ref = 0;
+    MRef ref = 0;
 
     assert_valid_marena(arena);
     assert(arena->alloc_context.staging_size >= arena->data_size);
@@ -1004,23 +1514,23 @@ marena_ask_alignment(MArena *arena, U32 alignment)
     return marena_commit(arena);                \
 
 
-MemRef marena_push                (MArena *arena, U32 size, bool initialize_to_zero )         { MARENA_PUSH_WRAPPER_DEF(marena_add                (arena, size, initialize_to_zero)) }
-MemRef marena_push_data           (MArena *arena, void *data, U32 sizeof_data )               { MARENA_PUSH_WRAPPER_DEF(marena_add_data           (arena, data, sizeof_data)) }
-MemRef marena_push_pointer        (MArena *arena, void *pointer)                              { MARENA_PUSH_WRAPPER_DEF(marena_add_pointer        (arena, pointer)) }
-MemRef marena_push_byte           (MArena *arena, byte_t b )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_byte           (arena, b )) }
-MemRef marena_push_char           (MArena *arena, char c )                                    { MARENA_PUSH_WRAPPER_DEF(marena_add_char           (arena, c )) }
-MemRef marena_push_i8             (MArena *arena, I8 i8 )                                     { MARENA_PUSH_WRAPPER_DEF(marena_add_i8             (arena, i8 )) }
-MemRef marena_push_u8             (MArena *arena, U8 u8 )                                     { MARENA_PUSH_WRAPPER_DEF(marena_add_u8             (arena, u8 )) }
-MemRef marena_push_i16            (MArena *arena, I16 i16 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i16            (arena, i16 )) }
-MemRef marena_push_u16            (MArena *arena, U16 u16 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u16            (arena, u16 )) }
-MemRef marena_push_i32            (MArena *arena, I32 i32 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i32            (arena, i32 )) }
-MemRef marena_push_u32            (MArena *arena, U32 u32 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u32            (arena, u32 )) }
-MemRef marena_push_i64            (MArena *arena, I64 i64 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i64            (arena, i64 )) }
-MemRef marena_push_u64            (MArena *arena, U64 u64 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u64            (arena, u64 )) }
-MemRef marena_push_size_t         (MArena *arena, size_t s )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_size_t         (arena, s )) }
-MemRef marena_push_usize          (MArena *arena, usize us )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_usize          (arena, us )) }
-MemRef marena_push_cstr           (MArena *arena, char* cstr )                                { MARENA_PUSH_WRAPPER_DEF(marena_add_cstr           (arena, cstr )) }
-MemRef marena_push_pstr32         (MArena *arena, PStr32 *pstr32 )                            { MARENA_PUSH_WRAPPER_DEF(marena_add_pstr32        (arena, pstr32 )) }
-MemRef marena_push_str32_nodata   (MArena *arena, Str32 str32 )                               { MARENA_PUSH_WRAPPER_DEF(marena_add_str32_nodata   (arena, str32 )) }
-MemRef marena_push_str32_withdata (MArena *arena, Str32 str32 )                               { MARENA_PUSH_WRAPPER_DEF(marena_add_str32_withdata (arena, str32 )) }
-MemRef marena_push_alignment      (MArena *arena, U32 alignment)                              { MARENA_PUSH_WRAPPER_DEF(marena_ask_alignment      (arena, alignment)) }
+MRef marena_push                (MArena *arena, U32 size, bool initialize_to_zero )         { MARENA_PUSH_WRAPPER_DEF(marena_add                (arena, size, initialize_to_zero)) }
+MRef marena_push_data           (MArena *arena, void *data, U32 sizeof_data )               { MARENA_PUSH_WRAPPER_DEF(marena_add_data           (arena, data, sizeof_data)) }
+MRef marena_push_pointer        (MArena *arena, void *pointer)                              { MARENA_PUSH_WRAPPER_DEF(marena_add_pointer        (arena, pointer)) }
+MRef marena_push_byte           (MArena *arena, byte_t b )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_byte           (arena, b )) }
+MRef marena_push_char           (MArena *arena, char c )                                    { MARENA_PUSH_WRAPPER_DEF(marena_add_char           (arena, c )) }
+MRef marena_push_i8             (MArena *arena, I8 i8 )                                     { MARENA_PUSH_WRAPPER_DEF(marena_add_i8             (arena, i8 )) }
+MRef marena_push_u8             (MArena *arena, U8 u8 )                                     { MARENA_PUSH_WRAPPER_DEF(marena_add_u8             (arena, u8 )) }
+MRef marena_push_i16            (MArena *arena, I16 i16 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i16            (arena, i16 )) }
+MRef marena_push_u16            (MArena *arena, U16 u16 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u16            (arena, u16 )) }
+MRef marena_push_i32            (MArena *arena, I32 i32 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i32            (arena, i32 )) }
+MRef marena_push_u32            (MArena *arena, U32 u32 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u32            (arena, u32 )) }
+MRef marena_push_i64            (MArena *arena, I64 i64 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i64            (arena, i64 )) }
+MRef marena_push_u64            (MArena *arena, U64 u64 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u64            (arena, u64 )) }
+MRef marena_push_size_t         (MArena *arena, size_t s )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_size_t         (arena, s )) }
+MRef marena_push_usize          (MArena *arena, usize us )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_usize          (arena, us )) }
+MRef marena_push_cstr           (MArena *arena, char* cstr )                                { MARENA_PUSH_WRAPPER_DEF(marena_add_cstr           (arena, cstr )) }
+MRef marena_push_pstr32         (MArena *arena, PStr32 *pstr32 )                            { MARENA_PUSH_WRAPPER_DEF(marena_add_pstr32        (arena, pstr32 )) }
+MRef marena_push_str32_nodata   (MArena *arena, Str32 str32 )                               { MARENA_PUSH_WRAPPER_DEF(marena_add_str32_nodata   (arena, str32 )) }
+MRef marena_push_str32_withdata (MArena *arena, Str32 str32 )                               { MARENA_PUSH_WRAPPER_DEF(marena_add_str32_withdata (arena, str32 )) }
+MRef marena_push_alignment      (MArena *arena, U32 alignment)                              { MARENA_PUSH_WRAPPER_DEF(marena_ask_alignment      (arena, alignment)) }
