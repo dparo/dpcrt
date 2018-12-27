@@ -112,10 +112,22 @@ void  mpool_clear    (MPool *mpool);
 void  mpool_del      (MPool *mpool);
 
 
+
+/* Blocks are chained in sequential order inside a given chunk:
+   As long we are inside the chunk region the next block is given by:
+
+       next_block = (U8*) block + sizeof(MFListBlock) + block->size
+
+   The previous block can simply be found by reading:
+
+       block->prev_block
+
+   which could be NULL in case the given block is the first in the chain.
+*/
 typedef struct MFListBlock
 {
     bool32 is_avail;
-    U32    size;                /* Size of the payload available for user allocation
+    U32    size;                /* Size of the payload available for USER ALLOCATION !
                                    The size of the entire block it's thus composed
                                    of `sizeof(MFListBlock) + block->size` */
     struct MFListBlock *prev_block;
@@ -124,20 +136,24 @@ typedef struct MFListBlock
 
 typedef struct MFListChunk
 {
-    /* Size of the entire chunk including, this header and the
-       total payload length available */
+    /* Size of the entire chunk including: this header and the
+       total payload length available. The payload length is made of the sum of:
+       - All the Blocks headers
+       - All user allocated payload data
+    */
     U32   size;
 
     /* Optimization field. Every chunk stores the maximum size
-       achieved by one of it's blocks. We can use this in allocation
-       phase. If the chunk doesn't have a max_contiguous_block_size_avail
+       achieved by one of it's blocks. We can use this in the allocation
+       phase. If the chunk doesn't have a `max_contiguous_block_size_avail`
        satisfying the requirement, we don't even bother to scan it's
        internal blocks and we pass directly to the next one.
        @NOTE :: A value of `0` for this field denotes that the chunk
        is full and there's no available block for allocation. */
     U32   max_contiguous_block_size_avail;
 
-
+    /* Chain of chunks belonging to the same allocation class.
+       Or NULL in case it's the last one in the chain. */
     struct MFListChunk *next_chunk;
 
     /* ---- */
@@ -165,7 +181,7 @@ typedef struct MFList
        - index 1: Contains small to medium allocations on the average of 1~2 Kilo
        - ...
        - index 6: Contains unbounded allocations that do not fit in the previous classes (More than 512K).
-                  Those allocations gets dedicated chunks per allocation */
+                  These allocations gets dedicated new chunks per allocation (eg 1 mmap per allocation) */
     MFListChunk *chunks[6];
 } MFList;
 

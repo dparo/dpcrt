@@ -587,8 +587,8 @@ mflist__is_chunk_empty(MFListChunk *chunk)
 
 
 static void
-mflist__free_user_addr_location(MFList *mflist,
-                                MFListUserAddrLocation *loc)
+mflist__free_with_location(MFList *mflist,
+                           MFListUserAddrLocation *loc)
 {
     assert_msg(loc->chunk, "Couldn't find the block requested\n Possible invalid pointer or the chunk got resized (NOTE :: Chunks are not allowed to resize by design : Possible memory corruption)");
     assert_msg(loc->block, "Couldn't find the block requested\n Possible invalid pointer or the chunk got resized (NOTE :: Chunks are not allowed to resize by design : Possible memory corruption)");
@@ -638,6 +638,7 @@ mflist__free_user_addr_location(MFList *mflist,
         {
             block->is_avail = true;
             block->prev_block = prev_block;
+
             if (next_block && next_block->is_avail)
             {
                 combined_size = block->size + (U32) sizeof(MFListBlock) + next_block->size;
@@ -649,6 +650,7 @@ mflist__free_user_addr_location(MFList *mflist,
             }
             else
             {
+                /* @NOTE :: INTENTIONALLY EMPTY */
             }
         }
 
@@ -663,7 +665,7 @@ void
 mflist_free(MFList *mflist, void *_addr)
 {
     MFListUserAddrLocation loc = mflist__find_user_addr_location(mflist, _addr);
-    mflist__free_user_addr_location(mflist, &loc);
+    mflist__free_with_location(mflist, &loc);
 }
 
 
@@ -877,9 +879,6 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, bool zero_initialize)
 
     /* Suballocate from the the found block */
     {
-        allocatable_block->is_avail = false;
-        result = (U8*) allocatable_block + sizeof(MFListBlock);
-
         /* Subpartition a new a block if it's possible to fit a new one */
         U32 remainder_size = allocatable_block->size - alloc_size;
 
@@ -893,7 +892,9 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, bool zero_initialize)
         if (should_fit_a_new_block)
         {
             /* It fits! Initialize the new block */
-            MFListBlock *newblock = (MFListBlock*) ((U8*) result + alloc_size);
+            MFListBlock *newblock = (MFListBlock*) ((U8*) allocatable_block
+                                                    + sizeof(MFListBlock)
+                                                    + alloc_size);
             newblock->is_avail = true;
             newblock->prev_block = allocatable_block;
             newblock->size = remainder_size - (U32) sizeof(MFListBlock);
@@ -906,7 +907,11 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, bool zero_initialize)
             remainder_size = 0;
         }
 
+        result = (U8*) allocatable_block + sizeof(MFListBlock);
+        allocatable_block->is_avail = false;
         allocatable_block->size = allocatable_block->size - remainder_size;
+        mflist->total_user_memory_usage += allocatable_block->size;
+
 
         if (zero_initialize)
         {
@@ -965,6 +970,7 @@ mflist_realloc1 (MFList *mflist, void *ptr, U32 newsize, bool zero_initialize)
             if (result)
             {
                 MFListBlock *allocated_block = (MFListBlock*) ((U8*) result - sizeof(MFListBlock));
+                internal_assert(!allocated_block->is_avail);
                 internal_assert(newsize == allocated_block->size);
 
                 U32 size_to_copy = MIN(allocated_block->size, loc.block->size);
