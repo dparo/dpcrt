@@ -503,7 +503,7 @@ mflist__init_chunk(MFListChunk *chunk, U32 chunk_size)
 }
 
 static inline MFListChunk *
-mflist_new_chunk(U32 chunk_size)
+mflist__new_chunk(U32 chunk_size)
 {
     assert((chunk_size % PAGE_SIZE) == 0);
     MFListChunk *newchunk = (MFListChunk*) mem_mmap(chunk_size);
@@ -523,7 +523,7 @@ mflist__chain_new_chunk(MFList *mflist,
                         MFListChunk *prev_chunk,
                         U32 chunk_size)
 {
-    MFListChunk *newchunk = mflist_new_chunk(chunk_size);
+    MFListChunk *newchunk = mflist__new_chunk(chunk_size);
 
     if (newchunk)
     {
@@ -571,7 +571,7 @@ mflist__del_chained_chunk(MFList *mflist,
 ATTRIB_PURE static inline bool
 mflist__is_chunk_empty(MFListChunk *chunk)
 {
-    bool result = true;
+    bool result = false;
 
     MFListBlock *first_block = mflist__get_first_block_from_chunk(chunk);
     MFListBlock *next_block = mflist__next_block(chunk, first_block);
@@ -579,11 +579,8 @@ mflist__is_chunk_empty(MFListChunk *chunk)
     if (first_block && !first_block->is_avail && !next_block)
     {
         result = true;
-
-
         internal_assert(first_block->size == chunk->size - (U32) sizeof(MFListChunk));
     }
-
 
     return result;
 }
@@ -596,6 +593,11 @@ mflist_free(MFList *mflist, void *_addr)
     assert_msg(loc.chunk, "Couldn't find the block requested\n Possible invalid pointer or the chunk got resized (NOTE :: Chunks are not allowed to resize by design : Possible memory corruption)");
     assert_msg(loc.block, "Couldn't find the block requested\n Possible invalid pointer or the chunk got resized (NOTE :: Chunks are not allowed to resize by design : Possible memory corruption)");
     assert_msg(!(loc.block->is_avail), "Possible Double free");
+
+    if (!loc.chunk || !loc.block || !(loc.block->is_avail))
+    {
+        return;
+    }
 
     if (loc.class == MFListAllocClass_More && loc.chunk)
     {
@@ -683,6 +685,7 @@ mflist_clear(MFList *mflist)
         if (mflist__should_del_chunk(chunk))
         {
             mflist__del_chunk(chunk);
+            chunk = prev_chunk;
         }
         else
         {
@@ -699,6 +702,7 @@ mflist_clear(MFList *mflist)
             if (mflist__should_del_chunk(chunk))
             {
                 mflist__del_chained_chunk(mflist, class, prev_chunk, chunk);
+                chunk = prev_chunk;
             }
             else
             {                
@@ -750,9 +754,11 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, bool zero_initialize)
        In this way we can limit high fragmentation inside the chunk
        in case where big allocation and small allocations concur to
        use the same chunks */
+    const U32 needed_chunk_size = alloc_size + (U32) sizeof(MFListChunk) + (U32) sizeof(MFListBlock);
+
     for (enum MFListAllocClass i = 0; i < ARRAY_LEN(mflist->chunks); i++)
     {
-        if (alloc_size <= s_mflist_class_sizes[i])
+        if (needed_chunk_size <= (U32) (0.25f * (float) s_mflist_class_sizes[i]))
         {
             class = i;
             class_size = s_mflist_class_sizes[i];
@@ -765,7 +771,7 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, bool zero_initialize)
     {
         if (class == MFListAllocClass_More)
         {
-            mflist->chunks[class] = mflist__chain_new_chunk(mflist, NULL, alloc_size);
+            mflist->chunks[class] = mflist__chain_new_chunk(mflist, NULL, needed_chunk_size);
         }
         else
         {
@@ -829,7 +835,7 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, bool zero_initialize)
 
 
     /* Find an alloctable Block */
-    MFListBlock *block = mflist__get_first_block_from_chunk(chunk);
+    MFListBlock *block = mflist__get_first_block_from_chunk(allocatable_chunk);
     {
 
         while(block)
