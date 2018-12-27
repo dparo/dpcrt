@@ -177,13 +177,13 @@ mpool__chain_new_chunk(MPool *mpool,
                        MPoolChunk *prev_chunk)
 {
     U32 chunk_size = mpool->chunk_size;
-    
+
     MPoolChunk *newchunk = mpool_new_chunk(chunk_size);
     if (newchunk)
     {
         mpool->total_allocator_memory_usage += chunk_size;
     }
-    
+
     if (prev_chunk)
     {
         prev_chunk->next_chunk = newchunk;
@@ -369,7 +369,7 @@ enum MFListAllocClass
     MFListAllocClass_128K = 3,
     MFListAllocClass_512K = 4,
     MFListAllocClass_More = 5,
-    
+
     MFListAllocClass_Last,
 };
 
@@ -380,7 +380,7 @@ static const U32 s_mflist_class_sizes[] =
     KILOBYTES(128),
     KILOBYTES(1024),
     KILOBYTES(8192),
-    
+
     /* Allocations of `MFListChunkSizeIndex_512K` or more size will have a dedicated mmap chunk */
     0,
 };
@@ -393,11 +393,11 @@ mflist__get_first_block_from_chunk(MFListChunk *chunk)
 {
     MFListBlock *result = ( (MFListBlock *)
              (  (U8*) chunk + sizeof(MFListChunk))
-             
+
         );
 
     internal_assert( chunk->size > (U8*) result - (U8*) chunk );
-    
+
     return result;
 }
 
@@ -444,7 +444,7 @@ mflist__find_user_addr_location(MFList *mflist,
     {
         MFListChunk *prev_chunk = NULL;
         MFListChunk *chunk = mflist->chunks[class];
-        
+
         while(chunk)
         {
 
@@ -604,18 +604,18 @@ mflist__free_user_addr_location(MFList *mflist,
         mflist__del_chained_chunk(mflist, loc->class, loc->prev_chunk, loc->chunk);
         return;
     }
-    
+
 
     if (loc->chunk && loc->block)
     {
         MFListBlock *block = loc->block;
-        
+
         MFListBlock *prev_block = block->prev_block;
         MFListBlock *next_block = mflist__next_block(loc->chunk, block);
-        
+
         const U32 block_size_before_dellocation = block->size;
         U32       combined_size                 = block->size;
-        
+
         mflist->total_user_memory_usage -= block_size_before_dellocation;
 
         /* Try to combine blocks back together */
@@ -682,7 +682,7 @@ mflist_clear(MFList *mflist)
     {
         MFListChunk *prev_chunk = NULL;
         MFListChunk *chunk = mflist->chunks[class];
-        
+
         if (!chunk)
         {
             continue;
@@ -696,13 +696,13 @@ mflist_clear(MFList *mflist)
         }
         else
         {
-            mflist__init_chunk(chunk, chunk->size);                        
+            mflist__init_chunk(chunk, chunk->size);
         }
 
         prev_chunk = chunk;
         chunk = tmp;
         internal_assert(prev_chunk);
-        
+
         while (chunk)
         {
             tmp = chunk->next_chunk;
@@ -712,7 +712,7 @@ mflist_clear(MFList *mflist)
                 chunk = prev_chunk;
             }
             else
-            {                
+            {
                 mflist__init_chunk(chunk, chunk->size);
             }
             prev_chunk = chunk;
@@ -735,7 +735,7 @@ mflist_del(MFList *mflist)
             continue;
         }
 
-        
+
         while(chunk)
         {
             MFListChunk *tmp = chunk->next_chunk;
@@ -763,7 +763,7 @@ mflist__score_class_for_alloc(MFList *mflist,
     MFListScoreClass result = {0};
     result.class = MFListAllocClass_More;
     result.required_chunk_size = needed_chunk_size;
-    
+
 
     /* Depending on how big the allocation is find the correct
        class where to allocate. We use different
@@ -804,7 +804,7 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, bool zero_initialize)
     /* Now determine the correct chunk where we should allocate */
     MFListChunk *chunk = mflist->chunks[score.class];
     MFListChunk *allocatable_chunk = NULL;
-    
+
     while (chunk)
     {
         if (chunk->max_contiguous_block_size_avail >= alloc_size)
@@ -842,7 +842,7 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, bool zero_initialize)
     void *result = NULL;
 
     internal_assert(allocatable_chunk->max_contiguous_block_size_avail >= alloc_size);
-    
+
     MFListBlock *allocatable_block               = NULL;
 
     /* Used to update the `allocatble_chunk->max_contiguous_block_size_avail`
@@ -867,7 +867,7 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, bool zero_initialize)
             {
                 max_contiguous_block_size_avail = block->size;
             }
-        
+
             block = mflist__next_block(chunk, block);
         }
     }
@@ -876,7 +876,7 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, bool zero_initialize)
     internal_assert(allocatable_block->is_avail);
 
     /* Suballocate from the the found block */
-    {                           
+    {
         allocatable_block->is_avail = false;
         result = (U8*) allocatable_block + sizeof(MFListBlock);
 
@@ -889,7 +889,7 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, bool zero_initialize)
              /* Avoid to create too small blocks, thus creating a long linked list
                 of very very small blocks that are pretty much unusable */
              && (remainder_size > (U32) (0.1f * (float) score.required_chunk_size)));
-        
+
         if (should_fit_a_new_block)
         {
             /* It fits! Initialize the new block */
@@ -907,7 +907,7 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, bool zero_initialize)
         }
 
         allocatable_block->size = allocatable_block->size - remainder_size;
-        
+
         if (zero_initialize)
         {
             memclr(result, allocatable_block->size);
@@ -924,12 +924,12 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, bool zero_initialize)
         {
             max_contiguous_block_size_avail = block->size;
         }
-        
+
         block = mflist__next_block(chunk, block);
     }
 
     allocatable_chunk->max_contiguous_block_size_avail = max_contiguous_block_size_avail;
-    
+
     return result;
 }
 
@@ -937,14 +937,14 @@ void *
 mflist_realloc1 (MFList *mflist, void *ptr, U32 newsize, bool zero_initialize)
 {
     void *result = NULL;
-    
+
     MFListUserAddrLocation loc = mflist__find_user_addr_location(mflist, ptr);
     assert_msg(loc.chunk, "Couldn't find the block requested\n Possible invalid pointer or the chunk got resized (NOTE :: Chunks are not allowed to resize by design : Possible memory corruption)");
     assert_msg(loc.block, "Couldn't find the block requested\n Possible invalid pointer or the chunk got resized (NOTE :: Chunks are not allowed to resize by design : Possible memory corruption)");
     assert_msg(!(loc.block->is_avail), "Possible Double free");
 
     if (loc.chunk && loc.block && !(loc.block->is_avail))
-    {                
+    {
         MFListScoreClass score = mflist__score_class_for_alloc(mflist, newsize);
 
         if ((loc.class == score.class)
@@ -968,7 +968,7 @@ mflist_realloc1 (MFList *mflist, void *ptr, U32 newsize, bool zero_initialize)
                 internal_assert(newsize == allocated_block->size);
 
                 U32 size_to_copy = MIN(allocated_block->size, loc.block->size);
-                
+
                 memcpy(result, ptr, size_to_copy);
                 if (zero_initialize)
                 {

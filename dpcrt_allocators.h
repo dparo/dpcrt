@@ -116,7 +116,7 @@ typedef struct MFListBlock
 {
     bool32 is_avail;
     U32    size;                /* Size of the payload available for user allocation
-                                   The size of the entire block it's thus composed 
+                                   The size of the entire block it's thus composed
                                    of `sizeof(MFListBlock) + block->size` */
     struct MFListBlock *prev_block;
     U8 payload[];
@@ -127,8 +127,16 @@ typedef struct MFListChunk
     /* Size of the entire chunk including, this header and the
        total payload length available */
     U32   size;
+
+    /* Optimization field. Every chunk stores the maximum size
+       achieved by one of it's blocks. We can use this in allocation
+       phase. If the chunk doesn't have a max_contiguous_block_size_avail
+       satisfying the requirement, we don't even bother to scan it's
+       internal blocks and we pass directly to the next one.
+       @NOTE :: A value of `0` for this field denotes that the chunk
+       is full and there's no available block for allocation. */
     U32   max_contiguous_block_size_avail;
-    
+
 
     struct MFListChunk *next_chunk;
 
@@ -137,6 +145,15 @@ typedef struct MFListChunk
 } MFListChunk;
 
 
+
+/* @NOTE :: The `mflist` uses internal assertion for
+   verifying correctness. If an internal
+   assertion triggers it may mean 2 things:
+   - 1: Bug in the `mflist` implementation (very unlikely with more time this thing gets used)
+   - 2: Memory corruption due to buffer overflow usage of the allocated memory. Those
+        will very likely trigger `internal_assert` (if those are enabled) that
+        checks for consistency of the state of `MFListBlock` 's.
+ */
 typedef struct MFList
 {
     size_t total_allocator_memory_usage;
@@ -144,7 +161,7 @@ typedef struct MFList
 
     /* We use 6 different ""classes"" of allocation depending on the degree
        of the size of the allocations.
-       - index 0: Contains usually small allocations on the average of 128~256 bytes 
+       - index 0: Contains usually small allocations on the average of 128~256 bytes
        - index 1: Contains small to medium allocations on the average of 1~2 Kilo
        - ...
        - index 6: Contains unbounded allocations that do not fit in the previous classes (More than 512K).
@@ -161,7 +178,7 @@ void* mflist_realloc1 (MFList *mflist, void *ptr, U32 newsize, bool zero_initial
 void  mflist_clear    (MFList *mflist);
 void  mflist_del      (MFList *mflist);
 static inline void* mflist_alloc    (MFList *mflist, U32 size) { return mflist_alloc1(mflist, size, true); }
-static inline void* mflist_realloc  (MFList *mflist, void *ptr, U32 newsize) { return mflist_realloc1(mflist, ptr, newsize, true); } 
+static inline void* mflist_realloc  (MFList *mflist, void *ptr, U32 newsize) { return mflist_realloc1(mflist, ptr, newsize, true); }
 
 
 
