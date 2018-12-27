@@ -472,7 +472,7 @@ end_chunk_search: { }
              block;
              block = mflist__next_block(chunk, block))
         {
-            if ((U8*) block == (addr + sizeof(MFListBlock)))
+            if ((U8*) block == (addr - sizeof(MFListBlock)))
             {
                 result.block = block;
                 break;
@@ -606,7 +606,6 @@ mflist_free(MFList *mflist, void *_addr)
 
     if (loc.chunk && loc.block)
     {
-        internal_assert(loc.class);
         MFListBlock *block = loc.block;
         
         MFListBlock *prev_block = block->prev_block;
@@ -739,23 +738,21 @@ mflist_del(MFList *mflist)
 
 
 void *
-mflist_alloc1(MFList *mflist, U32 size, bool zero_initialize)
+mflist_alloc1(MFList *mflist, U32 alloc_size, bool zero_initialize)
 {
-    (void) mflist, (void) size, (void) zero_initialize;
-
     enum MFListAllocClass class      = MFListAllocClass_More;
     U32                   class_size = 0;
 
 
     /* Depending on how big the allocation is find the correct
-       list where to allocate. We use different
-       lists to maintain different order of allocations sizes.
-       In this way we can limit external fragmentation, where
-       big allocation and small allocations may generate high
-       fragmentation inside the chunk */
+       class where to allocate. We use different
+       chains to maintain different order of allocations sizes.
+       In this way we can limit high fragmentation inside the chunk
+       in case where big allocation and small allocations concur to
+       use the same chunks */
     for (enum MFListAllocClass i = 0; i < ARRAY_LEN(mflist->chunks); i++)
     {
-        if (size <= s_mflist_class_sizes[i])
+        if (alloc_size <= s_mflist_class_sizes[i])
         {
             class = i;
             class_size = s_mflist_class_sizes[i];
@@ -766,13 +763,13 @@ mflist_alloc1(MFList *mflist, U32 size, bool zero_initialize)
     /* Allocate the first chunk if it's the first time */
     if (!mflist->chunks[class])
     {
-        if (class_size == 0)
+        if (class == MFListAllocClass_More)
         {
-            mflist->chunks[class_size] = mflist__chain_new_chunk(mflist, NULL, size);
+            mflist->chunks[class] = mflist__chain_new_chunk(mflist, NULL, alloc_size);
         }
         else
         {
-            mflist->chunks[class_size] = mflist__chain_new_chunk(mflist, NULL, class_size);
+            mflist->chunks[class] = mflist__chain_new_chunk(mflist, NULL, class_size);
         }
     }
 
@@ -788,18 +785,20 @@ mflist_alloc1(MFList *mflist, U32 size, bool zero_initialize)
     
     while (chunk)
     {
-        if (chunk->max_contiguous_block_size_avail >= size)
+        if (chunk->max_contiguous_block_size_avail >= alloc_size)
         {
             allocatable_chunk = chunk;
             break;
         }
         else
         {
+            /* Try to chain/append a new chunk in case we ran out */
             if (!chunk->next_chunk)
             {
                 chunk->next_chunk = mflist__chain_new_chunk(mflist, chunk, class_size);
                 if (!chunk->next_chunk)
                 {
+                    /* Failed */
                     break;
                 }
                 else
@@ -820,25 +819,96 @@ mflist_alloc1(MFList *mflist, U32 size, bool zero_initialize)
 
     void *result = NULL;
 
-    internal_assert(allocatable_chunk->max_contiguous_block_size_avail >= size);
+    internal_assert(allocatable_chunk->max_contiguous_block_size_avail >= alloc_size);
+    
+    MFListBlock *allocatable_block               = NULL;
+
+    /* Used to update the `allocatble_chunk->max_contiguous_block_size_avail`
+       accordingly after a block allocation */
+    U32          max_contiguous_block_size_avail = 0;
+
+
+    /* Find an alloctable Block */
     MFListBlock *block = mflist__get_first_block_from_chunk(chunk);
+    {
 
-    /* TODO TODO TODO COMPLETE COMPLETE COMPLETE */
+        while(block)
+        {
+            if (block->is_avail && block->size >= alloc_size)
+            {
+                /* Found the block split it in order to suballocate */
+                allocatable_block = block;
+                break;
+            }
+
+            if (block->is_avail && max_contiguous_block_size_avail <= block->size)
+            {
+                max_contiguous_block_size_avail = block->size;
+            }
+        
+            block = mflist__next_block(chunk, block);
+        }
+    }
+
+    internal_assert(allocatable_block);
+    internal_assert(allocatable_block->is_avail);
+
+    /* Suballocate from the the found block */
+    {                           
+        allocatable_block->is_avail = false;
+        result = (U8*) allocatable_block + sizeof(MFListBlock);
+
+        /* Subpartition a new a block if it's possible to fit a new one */
+        U32 remainder_size = allocatable_block->size - alloc_size;
+
+        const bool should_fit_a_new_block =
+            ((class != MFListAllocClass_More)
+             && remainder_size > sizeof(MFListBlock)
+             /* Avoid to create too small blocks, thus creating a long linked list
+                of very very small blocks that are pretty much unusable */
+             && (remainder_size > (U32) (0.1f * (float) class_size)));
+        
+        if (should_fit_a_new_block)
+        {
+            /* It fits! Initialize the new block */
+            MFListBlock *newblock = (MFListBlock*) ((U8*) result + alloc_size);
+            newblock->is_avail = true;
+            newblock->prev_block = allocatable_block;
+            newblock->size = remainder_size - (U32) sizeof(MFListBlock);
+        }
+        else
+        {
+            /* Not enough space. Let the `allocatable_block`
+               eat this little space cause we will not probably
+               be able to fit anything in here */
+            remainder_size = 0;
+        }
+
+        allocatable_block->size = allocatable_block->size - remainder_size;
+        
+        if (zero_initialize)
+        {
+            memclr(result, allocatable_block->size);
+        }
+    }
 
 
+    internal_assert(block == allocatable_block);
+    /* Keep on looping the chain of blocks in order
+       to properly update the `max_contiguos_block_size_avail` for the chunk */
     while(block)
     {
-        if (block->is_avail && block->size >= size)
+        if (block->is_avail && max_contiguous_block_size_avail <= block->size)
         {
-            
+            max_contiguous_block_size_avail = block->size;
         }
-            
+        
         block = mflist__next_block(chunk, block);
     }
 
-    internal_assert_msg(block, "WTF At this point we should have found a valid block where we can allocate");
+    allocatable_chunk->max_contiguous_block_size_avail = max_contiguous_block_size_avail;
+    
     return result;
-
 }
 
 

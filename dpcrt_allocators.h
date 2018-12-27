@@ -128,6 +128,7 @@ typedef struct MFListChunk
        total payload length available */
     U32   size;
     U32   max_contiguous_block_size_avail;
+    
 
     struct MFListChunk *next_chunk;
 
@@ -154,14 +155,13 @@ typedef struct MFList
 
 
 bool  mflist_init     (MFList *mflist);
-void* mflist_alloc1   (MFList *mflist, U32 size, bool zero_initialize);
+void* mflist_alloc1   (MFList *mflist, U32 alloc_size, bool zero_initialize);
 void  mflist_free     (MFList *mflist, void *ptr);
 void* mflist_realloc1 (MFList *mflist, void *ptr, U32 newsize, bool zero_initialize);
 void  mflist_clear    (MFList *mflist);
 void  mflist_del      (MFList *mflist);
 static inline void* mflist_alloc    (MFList *mflist, U32 size) { return mflist_alloc1(mflist, size, true); }
 static inline void* mflist_realloc  (MFList *mflist, void *ptr, U32 newsize) {return mflist_realloc1(mflist, ptr, newsize, true); }
-
 
 
 
