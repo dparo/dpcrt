@@ -939,11 +939,11 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, bool zero_initialize)
 }
 
 void *
-mflist_realloc1 (MFList *mflist, void *ptr, U32 newsize, bool zero_initialize)
+mflist_realloc1 (MFList *mflist, void *oldptr, U32 newsize, bool zero_initialize)
 {
     void *result = NULL;
 
-    MFListUserAddrLocation loc = mflist__find_user_addr_location(mflist, ptr);
+    MFListUserAddrLocation loc = mflist__find_user_addr_location(mflist, oldptr);
     assert_msg(loc.chunk, "Couldn't find the block requested\n Possible invalid pointer or the chunk got resized (NOTE :: Chunks are not allowed to resize by design : Possible memory corruption)");
     assert_msg(loc.block, "Couldn't find the block requested\n Possible invalid pointer or the chunk got resized (NOTE :: Chunks are not allowed to resize by design : Possible memory corruption)");
     assert_msg(!(loc.block->is_avail), "Possible Double free");
@@ -966,22 +966,29 @@ mflist_realloc1 (MFList *mflist, void *ptr, U32 newsize, bool zero_initialize)
         }
         else
         {
+            /* @NOTE We can `free` prematurely the block we're not going to
+               lose the data that was there */
+            mflist__free_with_location(mflist, &loc);
             result = mflist_alloc1(mflist, newsize, false);
+            
             if (result)
             {
                 MFListBlock *allocated_block = (MFListBlock*) ((U8*) result - sizeof(MFListBlock));
-                internal_assert(!allocated_block->is_avail);
-                internal_assert(newsize == allocated_block->size);
 
-                U32 size_to_copy = MIN(allocated_block->size, loc.block->size);
-
-                memcpy(result, ptr, size_to_copy);
+                /* No need to waste time copying data around if we get back the
+                   same pointer (@NOTE Data is explicity not cleared upon free and alloc
+                   in this case) */
+                if (result != oldptr)
+                {
+                    internal_assert(!allocated_block->is_avail);
+                    internal_assert(newsize == allocated_block->size);
+                    memmove(result, oldptr, MIN(allocated_block->size, loc.block->size));
+                }
+                
                 if (zero_initialize)
                 {
-                    internal_assert(allocated_block->size > size_to_copy);
-                    memclr((U8*) result + size_to_copy, allocated_block->size - size_to_copy);
+                    memclr((U8*) result + newsize, allocated_block->size - newsize);
                 }
-                mflist_free(mflist, ptr);
             }
         }
     }
