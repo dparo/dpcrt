@@ -126,12 +126,13 @@ void  mpool_del      (MPool *mpool);
 */
 typedef struct MFListBlock
 {
-    bool32 is_avail;
+    struct MFListBlock *prev_block;
     U32    size;                /* Size of the payload available for USER ALLOCATION !
                                    The size of the entire block it's thus composed
                                    of `sizeof(MFListBlock) + block->size` */
-    struct MFListBlock *prev_block;
-    U8 payload[];
+    bool32 is_avail;
+    /* ---- */
+    /* U8 payload[]; */
 } MFListBlock;
 
 typedef struct MFListChunk
@@ -157,7 +158,7 @@ typedef struct MFListChunk
     struct MFListChunk *next_chunk;
 
     /* ---- */
-    U8 payload[];
+    /* U8 payload[]; */
 } MFListChunk;
 
 

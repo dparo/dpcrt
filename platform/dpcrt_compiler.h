@@ -132,6 +132,14 @@ __BEGIN_DECLS
 
 
 
+/* Thread Local Storage */
+#if __GNUC__ || __clang__
+#  define THREAD_LOCAL_STORAGE __thread
+#elif _MSC_VER
+#  define THREAD_LOCAL_STORAGE __declspec ( thread )
+#endif
+
+
 
 // Supports for functions that gets run before entering `main`
 // example CONSTRUCT(my_init)
@@ -151,6 +159,7 @@ __BEGIN_DECLS
 #  define ATTRIB_NOTHROW          __attribute__((nothrow))
 #  define ATTRIB_PRINTF(STRING_INDEX, FIRST_TO_CHECK) __attribute__ ((format(printf, (STRING_INDEX), (FIRST_TO_CHECK))))
 #  define ATTRIB_WEAK             __attribute__((weak))
+#  define ATTRUIB_TLS             __thread
 
 #  define ATTRIB_ANNOTATE(...) __attribute__((annotate(__VA_ARGS__)))
 
@@ -185,6 +194,7 @@ __BEGIN_DECLS
 #  define ATTRIB_CONST
 #  define ATTRIB_FUNCTIONAL ATTRIB_CONST
 #  define ATTRIB_WEAK          __declspec(selectany)
+#  define ATTRIB_TLS           __declspec ( thread )
 
 #  define ATTRIB_ANNOTATE(...)
 
@@ -222,13 +232,6 @@ __BEGIN_DECLS
 
 
 
-/* Thread Local Storage */
-#if __GNUC__ || __clang__
-#  define THREAD_LOCAL_STORAGE __thread
-#elif _MSC_VER
-#  define THREAD_LOCAL_STORAGE __declspec ( thread )
-#endif
-
 
 #if __METAC_TOOL__
 #  define $META(...) ATTRIB_ANNOTATE(__VA_ARGS__)
@@ -255,8 +258,6 @@ __BEGIN_DECLS
 /* ===================================
    Static Assertion
    =================================== */
-
-
 #ifndef DPCRT_STATIC_ASSERT
 #  if __STDC_VERSION__ >= STD_C11_VERSION
 #    define DPCRT_STATIC_ASSERT(cond, msg) _Static_assert((cond), msg)
