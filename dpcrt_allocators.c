@@ -430,7 +430,7 @@ typedef struct MFListUserAddrLocation
 } MFListUserAddrLocation;
 
 
-#define MFLIST__ENABLE_DEBUG_INTEGRITY_CHECKS 0
+#define MFLIST__ENABLE_DEBUG_INTEGRITY_CHECKS (1) && __DEBUG
 
 #if MFLIST__ENABLE_DEBUG_INTEGRITY_CHECKS
 #  define __mflist_assert_integrity(...) __mflist_assert_integrity__(__VA_ARGS__)
@@ -839,7 +839,7 @@ mflist__score_class_for_alloc(MFList *mflist,
 
     MFListScoreClass result = {0};
     result.class = MFListAllocClass_More;
-    result.required_chunk_size = needed_chunk_size;
+    result.required_chunk_size = (U32) PAGE_ALIGN(needed_chunk_size);
 
 
     /* Depending on how big the allocation is find the correct
