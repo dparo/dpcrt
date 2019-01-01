@@ -153,7 +153,7 @@ typedef struct MFListChunk
        is full and there's no available block for allocation. */
     U32   max_contiguous_block_size_avail;
 
-    /* Chain of chunks belonging to the same allocation class.
+    /* Chain of chunks belonging to the same allocation categ.
        Or NULL in case it's the last one in the chain. */
     struct MFListChunk *next_chunk;
 
@@ -176,18 +176,71 @@ typedef struct MFList
     size_t total_allocator_memory_usage;
     size_t total_user_memory_usage;
 
-    /* We use 6 different ""classes"" of allocation depending on the degree
+    /* We use 6 different ""categories"" of allocation depending on the degree
        of the size of the allocations.
        - index 0: Contains usually small allocations on the average of 128~256 bytes
        - index 1: Contains small to medium allocations on the average of 1~2 Kilo
        - ...
-       - index 6: Contains unbounded allocations that do not fit in the previous classes (More than 512K).
+       - index 6: Contains unbounded allocations that do not fit in the previous categories (More than 512K).
                   These allocations gets dedicated new chunks per allocation (eg 1 mmap per allocation) */
     MFListChunk *chunks[6];
 } MFList;
 
 
 
+
+/* A zero-initialization of an MFList is more than enough to have a valid MFList state.
+   The function `mflist_init` is provided just for consistency reasons.
+
+   @EXAMPLE USAGE:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   MFList mflist = {0};    // or equivalently mflist_init(&mflist);
+   char *buf = mflist_alloc(&mflist, 16); // or `mflist_alloc1(&mflist, 16, true);` for explicitly requesting a clear of the returned buffer
+   if (buf)
+   {
+      strncpy(buf, "Hello world", 16);
+      printf("%s\n", buf);
+      mflist_free(&mflist, buf);
+   }
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+   Since zero initialization is more than enough for a correct initialization
+   the MFList can be conveniently used even when declared in global scope (or static to the
+   translation unit) and can just be used right away.
+
+   @EXAMPLE:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   ....
+   static MFList strings_allocator;
+
+   // Wrapper functions for conveniently using the allocator
+   char* new_string(char *s)
+   {
+       char *result = mflist_alloc1(&strings_allocator, (U32) strlen(s), false);
+       if (result)
+       {
+           strcpy(result, s);
+       }
+       return result;
+   }
+   char* concat_strings(char *s1, char *s2)
+   {
+      U32 s1_len = (U32) strlen(s1);
+      U32 s2_len = (U32) strlen(s2);
+      char *result = mflist_alloc1(&strings_allocator, s1_len + s2_len, false);
+      if (result)
+      {
+           strcpy(result, s1);
+           strcpy(result + s1_len, s2);
+      }
+      return result;
+   }
+   ....
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ */
+static inline bool mflist_init(MFList *mflist) { memclr(mflist, sizeof(MFList)); return true; }
 bool  mflist_init     (MFList *mflist);
 void* mflist_alloc1   (MFList *mflist, U32 alloc_size, bool zero_initialize);
 void  mflist_free     (MFList *mflist, void *ptr);

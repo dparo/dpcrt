@@ -177,7 +177,7 @@ pal_createdir(char *path);
 
 typedef struct FileTime
 {
-    time_t tv_sec;  // whole seconds (valid values are >= 0) 
+    time_t tv_sec;  // whole seconds (valid values are >= 0)
     time_t tv_nsec; // nanoseconds (valid values are [0, 999999999 (0.9999.. sec)])
 } FileTime;
 
@@ -197,7 +197,7 @@ pal_filetime_diff(FileTime *result,
                   FileTime *x,
                   FileTime *y);
 
-/* This function is a more convenient wrapper around `pal_filetime_diff` 
+/* This function is a more convenient wrapper around `pal_filetime_diff`
  * which doesn't return the result of the difference */
 int
 pal_filetime_cmp(FileTime *ft1,
@@ -229,7 +229,7 @@ pal_munmap( void* addr, size_t size );
 
 
 /* Reserves (a possibly huge) chunk of address space memory
-   which is not actually committed onto physical memory. 
+   which is not actually committed onto physical memory.
    This is equivalent to `VirtualAlloc` with `MEM_RESERVE` `MEM_COMMIT`
    flags. */
 void*  pal_reserve_addr_space   (void *addr, size_t size);
@@ -317,21 +317,15 @@ pal_get_proc_addr(DllHandle handle,
 
 #    if defined(__i386__) || defined(__x86_64__)
 __attribute__((gnu_inline, always_inline))
-__inline__ static void trap_instruction(void)
+__inline__ static void __x86_trap_instruction(void)
 {
     __asm__ volatile("int $0x03");
 }
-__attribute__((gnu_inline, always_inline))
-__inline__ static void __debug_break(char* file, int line)
-{
-    fprintf(stderr, "\n\n\nCall to debug_break || file: %s || line: %d\n", file, line);
-    fprintf(stderr, "Previous value of errno: %d\n", errno);
-    fprintf(stderr, "    errno desc: %s\n\n\n", strerror(errno));
-    fflush(stderr);
-    raise(SIGTRAP);
-}
 
-#define debug_break() __debug_break( __FILE__, __LINE__)
+#define debug_break() raise(SIGTRAP)
+#define dbg_break()   raise(SIGTRAP)
+#define dbgbreak()    raise(SIGTRAP)
+#define __dbgbrk()    raise(SIGTRAP)
 
 #    else
 #         error "Debug break needs to be written for this architecture"
@@ -344,25 +338,28 @@ __inline__ static void __debug_break(char* file, int line)
 
 
 #if __DEBUG
-#    define assert_msg(X, ...)                  \
-    do {                                        \
-        if (!(X)) {                             \
-            fprintf(stderr, "\n\n\n");          \
-            fprintf(stderr, __VA_ARGS__);       \
-            fprintf(stderr, "\n\n");            \
-            pal_print_stack_trace();            \
-            fflush(stderr);                     \
-            debug_break();                      \
-        }                                       \
+#    define assert_msg(X, ...)  \
+    do {                                                                \
+        if (!(X))                                                       \
+        {                                                               \
+            fprintf(stderr, "\n\n\ASSERTION FAILED :: [ %s:%d ]\n", __FILE__, __LINE__); \
+            fprintf(stderr, "REASON / MESSAGE :: { ");                  \
+            fprintf(stderr, __VA_ARGS__);                               \
+            fprintf(stderr, " }\n\n################################# BACKTRACE ############################################\n\n"); \
+            pal_print_stack_trace();                                    \
+            fflush(stderr);                                             \
+            fprintf(stderr, "\n\n################################# ERRNO INFO ###########################################\n\n"); \
+            fprintf(stderr, "* Value of errno: %d\n", errno);    \
+            fprintf(stderr, "* Errno desc: %s\n\n\n", strerror(errno)); \
+            fflush(stderr);                                             \
+            debug_break();                                              \
+        }                                                               \
     } while(0)
 
-#    define assert(X) assert_msg(X, "Failed assertion at file: %s || line: %d\n", __FILE__, __LINE__)
+#    define assert(X) assert_msg(X, "")
 #else
-#    define assert_msg(X, ...)                  \
-    do {                                        \
-    } while(0)
-
-#    define assert(X) do { } while(0)
+#    define assert_msg(X, ...)  do { } while (0)
+#    define assert(X)           do { } while (0)
 #endif
 
 

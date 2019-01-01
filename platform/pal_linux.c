@@ -195,7 +195,6 @@ file_flags__convert(enum open_file_flags flags)
         result |= O_EXCL;
     }
     if (flags & FILE_NOCTTY) {
-        debug_break();
         result |= O_NOCTTY;
     }
     if (flags & FILE_NOFOLLOW) {
