@@ -23,9 +23,6 @@
 #define HGUARD_77f71620e38a4ba09d5a55b0bc707a92
 
 #include "dpcrt_utils.h"
-#include <stdint.h>
-#include <stddef.h>
-#include <stdbool.h>
 #include "dpcrt_types.h"
 #include "dpcrt_pal.h"
 
@@ -37,9 +34,9 @@ enum AllocStrategy {
     AllocStrategy_Malloc        = 1,
     AllocStrategy_Xcalloc       = 2,
     AllocStrategy_Calloc        = 3,
-    AllocStrategy_AlignedAlloc  = 4,
-    AllocStrategy_Mmap          = 5,
-    AllocStrategy_Sbrk          = 6,          // @NOTE: Reallocation is supported only if it is the last allocated in a LIFO style
+    AllocStrategy_Mmap          = 4,
+    //AllocStrategy_AlignedAlloc  = 5,
+
 };
 
 

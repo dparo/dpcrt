@@ -20,8 +20,8 @@
  */
 
 #include "dpcrt_mem.h"
-#include <stdlib.h>
-#include <stdio.h>
+#include <stdc/malloc.h>
+#include <stdc/stdio.h>
 
 
 
@@ -65,22 +65,6 @@ xrealloc ( void *ptr,
 }
 
 
-
-#if __PAL_LINUX__
-# include <unistd.h>
-#endif
-
-static inline void *
-mem_sbrk(size_t size)
-{
-#if __PAL_LINUX__
-    return sbrk((intptr_t) size);
-#else
-    invalid_code_path("sbrk is not a valid allocation strategy for Windows platforms");
-    return 0;
-#endif
-}
-
 void*
 mem_mmap(size_t size)
 {
@@ -104,6 +88,7 @@ mem_unmap(void *addr, size_t size)
 void*
 mem_alloc( enum AllocStrategy alloc_strategy, size_t size, size_t alignment)
 {
+    (void) alignment;
     switch (alloc_strategy)
     {
 
@@ -125,17 +110,16 @@ mem_alloc( enum AllocStrategy alloc_strategy, size_t size, size_t alignment)
         return calloc(1, size);
     } break;
 
+#if 0
     case AllocStrategy_AlignedAlloc: {
         return aligned_alloc(alignment, size);
     } break;
+#endif
 
     case AllocStrategy_Mmap: {
         return mem_mmap(size);
     } break;
 
-    case AllocStrategy_Sbrk: {
-        return mem_sbrk(size);
-    } break;
     }
     return NULL;
 }

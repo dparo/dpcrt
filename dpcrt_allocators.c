@@ -37,7 +37,7 @@
    MPool Implementation
    ########################################################################## */
 
-#define MPOOL_RESERVED_CHUNK_HEADER_SIZE ( ALIGN(sizeof(MPoolChunk), 128) )
+#define MPOOL_RESERVED_CHUNK_HEADER_SIZE ( ALIGN(size_t, sizeof(MPoolChunk), 128) )
 
 
 static MPoolChunk *
@@ -159,7 +159,7 @@ mpool__init_chunk(MPoolChunk *chunk)
 static inline MPoolChunk *
 mpool__new_chunk(U32 chunk_size)
 {
-    assert((chunk_size % PAGE_SIZE) == 0);
+    assert(IS_PAGE_ALIGNED(chunk_size));
     MPoolChunk *newchunk = (MPoolChunk*) mem_mmap(chunk_size);
 
     if (newchunk)
@@ -321,7 +321,7 @@ mpool_init_aux(MPool *mpool,
     assert_msg(block_size >= sizeof(void*), "Make sure to ask for a reasonable block_size");
 
     chunk_size = (U32) PAGE_ALIGN(chunk_size);
-    block_size = (U16) ALIGN(block_size, sizeof(void*));
+    block_size = ALIGN(U16, block_size, sizeof(void*));
 
     *mpool                                = (MPool) {0};
     mpool->chunk_size                     = chunk_size;
@@ -555,7 +555,7 @@ mflist__init_chunk(MFListChunk *chunk, U32 chunk_size)
 static inline MFListChunk *
 mflist__new_chunk(U32 chunk_size)
 {
-    assert((chunk_size % PAGE_SIZE) == 0);
+    assert(IS_PAGE_ALIGNED(chunk_size));
     MFListChunk *newchunk = (MFListChunk*) mem_mmap(chunk_size);
 
     if (newchunk)
@@ -934,7 +934,7 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, const bool zero_initialize)
         return NULL;
     }
     alloc_size += (U32) sizeof(MFListBlock);
-    alloc_size = (U32) ALIGN(alloc_size, (U32) sizeof(MFListBlock));
+    alloc_size = ALIGN(U32, alloc_size, sizeof(MFListBlock));
 
     MFListScoreCateg score = mflist__score_categ_for_alloc(mflist, alloc_size);
 
@@ -1079,7 +1079,7 @@ mflist_realloc1 (MFList *mflist, void *oldptr, U32 newsize, bool zero_initialize
         return NULL;
     }
     newsize += (U32) sizeof(MFListBlock);
-    newsize = (U32) ALIGN(newsize, (U32) sizeof(MFListBlock));
+    newsize = ALIGN(U32, newsize, sizeof(MFListBlock));
 
     void *result = NULL;
 
@@ -1218,7 +1218,7 @@ marena_grow(MArena *arena)
     }
     else
     {
-        newsize = (U32) ((F32) arena->data_max_size * 1.25f) + 8 * (U32) PAGE_SIZE;
+        newsize = (U32) ((F32) arena->data_max_size * 1.25f) + 8 * (U32) G_pal.page_size;
     }
     return marena_realloc(arena, newsize);
 }
@@ -1278,9 +1278,9 @@ marena_new_aux ( enum AllocStrategy alloc_strategy,
 {
     assert(size);
     MArena marena = {0};
-    size = ALIGN(size, MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE);
+    size = ALIGN(U32, size, MARENA_MINIMUM_ALLOWED_STACK_POINTER_VALUE);
     const U32 alignment = 128;
-    size = ALIGN(size, alignment);
+    size = ALIGN(U32, size, alignment);
     const size_t alloc_size = size;
 
     void *buffer = mem_alloc( alloc_strategy, alloc_size, alignment);
@@ -1779,7 +1779,7 @@ marena_add_pstr32( MArena *arena, PStr32 *pstr32 )
     assert_valid_marena(arena);
     assert(arena->alloc_context.staging_size != 0);
 
-    return marena_add_data(arena, pstr32, (U32) sizeof(Str32Hdr) + (U32) pstr32->bufsize);
+    return marena_add_data(arena, pstr32, (U32) sizeof(Str32Hdr) + (U32) pstr32->len + U32_LIT(1));
 }
 
 
@@ -1798,12 +1798,12 @@ marena_add_str32_withdata( MArena *arena, Str32 str32 )
 {
     assert_valid_marena(arena);
     assert(arena->alloc_context.staging_size != 0);
-    assert(str32.bufsize > 0);
+    assert(str32.len >= 0);
 
     bool result = marena_add_data(arena, &str32, (U32) sizeof(Str32Hdr));
     if (result)
     {
-        result = marena_add_data(arena, (U8*) &str32 + sizeof(Str32Hdr), (U32) str32.bufsize);
+        result = marena_add_data(arena, (U8*) &str32 + sizeof(Str32Hdr), (U32) str32.len + U32_LIT(1));
     }
     return result;
 }
@@ -1815,7 +1815,7 @@ marena_ask_alignment(MArena *arena, U32 alignment)
 {
     assert(arena && (arena->data_size != 0));
     const usize curr_addr = (usize) arena->buffer + arena->data_size;
-    const usize aligned_addr = (usize) ALIGN(curr_addr, (usize) alignment);
+    const usize aligned_addr = (usize) ALIGN(usize, curr_addr, alignment);
     const U32 required_bytes_for_alignment = (U32) (aligned_addr - curr_addr);
     return marena_add(arena, required_bytes_for_alignment, true);
 }

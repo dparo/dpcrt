@@ -25,8 +25,7 @@
 #include "../build_config.h"
 #include "dpcrt_compiler.h"
 #include "dpcrt_types.h"
-#include <errno.h>
-#include <string.h>
+#include <stdc/string.h>
 
 __BEGIN_DECLS
 
@@ -36,6 +35,7 @@ __BEGIN_DECLS
 
 
 #define cast(T, expr) (T) (expr)
+#define global extern
 
 #if defined __DEBUG
 /* Note keep this in one liner to make the __LINE__ macro expansion work */
@@ -59,8 +59,13 @@ __BEGIN_DECLS
 #define MIN(a, b)     ((a) < (b) ? (a) : (b))
 #define MAX(a, b)     ((a) < (b) ? (b) : (a))
 
-#define ALIGN(N, S) ((((N) + (S) - 1) / (S)) * (S))
-#define ALIGN_PTR(N, S) ((void*)(ALIGN ( ((size_t)(N)) , S) ))
+
+/* Align any generic value to any alignment */
+#define ALIGN(TYPE, N, S) ((TYPE)  ((((TYPE)(N) + (TYPE) ((TYPE)(S) - (TYPE) 1)) / (TYPE)(S)) * (TYPE)(S)))
+/* This macro is the same as ALIGN but only works when `N` & `S` are POWERS of 2.
+   It can possibly lead to better assembly generation. */
+#define POW2_ALIGN(TYPE, N, S) ((TYPE) (  ((TYPE)(N) + ((TYPE)(S) - (TYPE) 1)) & ((TYPE) ~((TYPE)(S) - (TYPE) 1))  ))
+#define ALIGN_PTR(N, S) ((void*) (ALIGN(usize, N, S))
 
 
 #define KILOBYTES(x) (((size_t) (x)) << 10)
@@ -76,23 +81,6 @@ __BEGIN_DECLS
 #define enum16(TYPE) I16
 #define enum32(TYPE) I32
 #define enum64(TYPE) I64
-
-
-# ifndef PAGE_SHIFT
-#   define PAGE_SHIFT      12
-# endif
-
-# ifndef PAGE_SIZE
-#   define PAGE_SIZE (KILOBYTES(4))
-# endif
-
-# ifndef PAGE_MASK
-#   define PAGE_MASK       (~(PAGE_SIZE - 1))
-# endif
-
-# ifndef PAGE_ALIGN
-#   define PAGE_ALIGN(addr)  (ALIGN(addr, PAGE_SIZE))
-# endif
 
 
 #define IS_POW2(x) (((x) & ((x) - 1)) == 0)

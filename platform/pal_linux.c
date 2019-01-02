@@ -19,7 +19,7 @@
  * THE SOFTWARE.
  */
 
-#include <stdarg.h>
+#include <stdc/stdarg.h>
 
 #include "dpcrt_pal.h"
 #include "dpcrt_utils.h"
@@ -39,6 +39,12 @@
 #include <execinfo.h>
 #include <stdlib.h>
 #include <sys/types.h>
+
+char *strsignal (int sig) ATTRIB_NOTHROW;
+
+
+PAL_Context G_pal;
+static bool S_pal_initialized;
 
 void
 pal_exit(int status)
@@ -67,7 +73,7 @@ pal_fatal(char *fmt, ...)
 
 
 static void
-linux_print_stack_trace(void)
+libc_print_stack_trace(void)
 {
     void *array[32];
     int size;
@@ -82,8 +88,9 @@ linux_print_stack_trace(void)
     fflush(stderr);
 }
 
-static void
-gdb_print_stack_trace(void)
+
+void
+pal_print_stack_trace(void)
 {
     char name_buf[512]; 
     char pid_buf[30];
@@ -92,7 +99,8 @@ gdb_print_stack_trace(void)
 
     if (proc_self_exe_len == -1)
     {
-         linux_print_stack_trace();
+        /* If failure revert back to simple libc stack trace */
+         libc_print_stack_trace();
     }
     else
     {
@@ -101,11 +109,11 @@ gdb_print_stack_trace(void)
         if (!child_pid)
         {
             dup2(2, 1); // redirect output to stderr
-            fprintf(stderr,"stack trace for %s pid=%s\n", name_buf, pid_buf);
+            fprintf(stderr,"#### STACK TRACE FOR %s [PID: %s]\n\n", name_buf, pid_buf);
             execlp("gdb", "gdb", "--batch", "-n", "-ex", "thread", "-ex", "bt full", name_buf, pid_buf, NULL);
-            /* execlp does not return; if, for some reason, gdb fails to start revert back to a simple stack_trace print */
+            /* execlp does not return; if, for some reason, gdb fails to start revert back to a simple libc stack_trace print */
             {
-                linux_print_stack_trace();
+                libc_print_stack_trace();
                 abort();
             }
         }
@@ -117,16 +125,6 @@ gdb_print_stack_trace(void)
     }
 }
 
-void
-pal_print_stack_trace(void)
-{
-#if __DEBUG
-    gdb_print_stack_trace();
-#else
-    linux_print_stack_trace();
-#endif
-}
-
 static void
 sigsegv_linux_callback(int sig)
 {
@@ -136,18 +134,17 @@ sigsegv_linux_callback(int sig)
 }
 
 
-I64
+size_t
 pal_get_page_size( void )
 {
-    static I64 cached_page_size = 0;
-    if ( cached_page_size == 0 ) {
-        I64 page_size = sysconf(_SC_PAGESIZE);
-        assert( page_size );
-        cached_page_size = page_size;
-        return page_size;
-    } else {
-        return cached_page_size;
+    size_t result = 0;
+    I64 page_size = sysconf(_SC_PAGESIZE);
+    if (page_size != -1)
+    {
+        assert(IS_POW2(page_size));
+        result = (size_t) page_size;
     }
+    return result;
 }
 
 bool
@@ -418,7 +415,7 @@ pal_mmap_file(char *file, void* addr, enum page_prot_flags prot, enum page_type_
     assert(st == 0);
     if (st == 0)
     {
-        I64 page_size = pal_get_page_size();
+        size_t page_size = G_pal.page_size;
         void *zeroed_page = 0;
 
         if ( zeroed_page_before )
@@ -463,13 +460,28 @@ pal_munmap( void* addr, size_t size )
 }
 
 
-int
+bool
 pal_init( void )
 {
-    int result = false;
+    int result = true;
 
-    { // Page Size retrieve
-        signal(SIGSEGV, sigsegv_linux_callback);   // install our handler
+    if (!S_pal_initialized)
+    {
+        S_pal_initialized = true;
+
+        size_t page_size = pal_get_page_size();
+        assert(IS_POW2(page_size));
+
+        /* Initialize the global structure */
+        {
+            G_pal.page_size = page_size;
+            G_pal.page_mask = ~(page_size - (size_t) 1);
+        }
+
+        { // Install Signal Handlers
+            signal(SIGSEGV, sigsegv_linux_callback);   // install our handler
+        }
+
     }
 
     return result;

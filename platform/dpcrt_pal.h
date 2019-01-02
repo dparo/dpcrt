@@ -23,7 +23,10 @@
 #define HGUARD_01ef9fe4705a44d2a31a6ea3027f7dfb
 
 #include "dpcrt_utils.h"
-#include <stdio.h>
+#include <stdc/stdio.h>
+#include <stdc/errno.h>
+#include <stdc/string.h>
+
 
 __BEGIN_DECLS
 
@@ -107,6 +110,17 @@ static const DllHandle  Invalid_DllHandle  = 0;
 #endif
 
 
+typedef struct PAL_Context {
+    size_t page_size;
+    size_t page_mask;
+} PAL_Context;
+
+global PAL_Context G_pal;
+
+#define PAGE_ALIGN(x)       (POW2_ALIGN(size_t, (x), G_pal.page_size))
+#define IS_PAGE_ALIGNED(x)  (( (x) % G_pal.page_size ) == 0)
+
+
 /* Process Termination */
 void
 pal_exit(int status)
@@ -127,10 +141,15 @@ pal_fatal(char *fmt, ...)
 void
 pal_print_stack_trace(void);
 
-int
-pal_init(void);
 
-I64
+bool
+pal_init(void) ATTRIB_CONSTRUCT(pal_init);
+
+
+/* @NOTE :: This will call into the OS. It
+ is advised to access `G_pal.page_size` variable
+ instead after a valid call into  `pal_init` is made */
+size_t
 pal_get_page_size(void);
 
 
@@ -311,13 +330,18 @@ pal_get_proc_addr(DllHandle handle,
 #if _MSC_VER
 #     define debug_break __debugbreak
 #else
-#    include <signal.h>
+
+# ifndef _SIGNAL_H
+/* Forward declare just the stuff that we need from <signal.h> */
+   #define SIGTRAP 5
+   extern int raise (int sig) ATTRIB_NOTHROW;
+#endif
 
 /* Use __builtin_trap() on AArch64 iOS only */
 
 #    if defined(__i386__) || defined(__x86_64__)
 __attribute__((gnu_inline, always_inline))
-__inline__ static void __x86_trap_instruction(void)
+__inline__ static void __trap_instruction(void)
 {
     __asm__ volatile("int $0x03");
 }
@@ -338,25 +362,27 @@ __inline__ static void __x86_trap_instruction(void)
 
 
 #if __DEBUG
-#    define assert_msg(X, ...)  \
+#    define assert_msg(X, ...)                                          \
     do {                                                                \
         if (!(X))                                                       \
         {                                                               \
-            fprintf(stderr, "\n\n\ASSERTION FAILED :: [ %s:%d ]\n", __FILE__, __LINE__); \
+            fprintf(stderr, "\n\n################################################################################\n\n"); \
+            fprintf(stderr, "ASSERTION FAILED :: [ %s:%d ]\n", __FILE__, __LINE__); \
             fprintf(stderr, "REASON / MESSAGE :: { ");                  \
             fprintf(stderr, __VA_ARGS__);                               \
-            fprintf(stderr, " }\n\n################################# BACKTRACE ############################################\n\n"); \
+            fprintf(stderr, " }\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ BACKTRACE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n"); \
             pal_print_stack_trace();                                    \
             fflush(stderr);                                             \
-            fprintf(stderr, "\n\n################################# ERRNO INFO ###########################################\n\n"); \
-            fprintf(stderr, "* Value of errno: %d\n", errno);    \
-            fprintf(stderr, "* Errno desc: %s\n\n\n", strerror(errno)); \
+            fprintf(stderr, "\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ERRNO INFO ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n"); \
+            fprintf(stderr, "* Value of errno: %d\n", errno);           \
+            fprintf(stderr, "* Errno desc: %s\n", strerror(errno)); \
+            fprintf(stderr, "\n################################################################################\n\n"); \
             fflush(stderr);                                             \
             debug_break();                                              \
         }                                                               \
     } while(0)
 
-#    define assert(X) assert_msg(X, "")
+#    define assert(X) assert_msg(X, " ")
 #else
 #    define assert_msg(X, ...)  do { } while (0)
 #    define assert(X)           do { } while (0)
@@ -376,8 +402,8 @@ __inline__ static void __x86_trap_instruction(void)
 #endif
 
 
-#define invalid_code_path(...)  assert_msg ( 0, "Invalid code path || file: %s || line: %d", __FILE__, __LINE__ )
-#define not_implemented(...)    assert_msg ( 0, "Not implemented code path || file: %s || line: %d", __FILE__, __LINE__ )
+#define invalid_code_path(...)  assert_msg ( 0, "Invalid code path" )
+#define not_implemented(...)    assert_msg ( 0, "Not implemented code path" )
 
 
 

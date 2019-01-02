@@ -153,7 +153,7 @@ target_link_libraries(dpcrt
 endif()
 
 target_include_directories(dpcrt PUBLIC
-  ./ platform ./math ./memory ./lexer)
+  ./ ./platform ./math ./memory ./lexer)
 
 target_include_directories(dpcrt PRIVATE
   ./)

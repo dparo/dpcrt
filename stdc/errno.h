@@ -18,35 +18,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef HGUARD_e138864469634ee39cde1436e8890ed3
-#define HGUARD_e138864469634ee39cde1436e8890ed3
+#ifndef HGUARD_abf720910adf4d2f9e7b4343fbf5cf7c
+#define HGUARD_abf720910adf4d2f9e7b4343fbf5cf7c
 
 #include "dpcrt_utils.h"
 
-
 __BEGIN_DECLS
 
-extern void *
-malloc (size_t size)
-    ATTRIB_NOTHROW ATTRIB_MALLOC ATTRIB_NODISCARD;
+#ifndef	_ERRNO_H
+#define	_ERRNO_H 1
 
-extern void *
-calloc (size_t nmemb, size_t size)
-    ATTRIB_NOTHROW ATTRIB_MALLOC ATTRIB_NODISCARD;
 
-extern void *
-valloc ( size_t size )
-    ATTRIB_NOTHROW ATTRIB_MALLOC ATTRIB_NODISCARD;
+/* Some defines for common values of errno feel free to add more
+   as the need arises */
+#if __PAL_WINDOWS__
+/* If they are not equal remember to do preprocessor if for conditional compilation definition */
+# error "REMAINDER :: Check if the ERRNO LINUX constants provided below are the same value even under WINDOWS OS"
+#endif
 
-extern void *
-realloc (void *ptr, size_t size)
-    ATTRIB_NOTHROW ATTRIB_NODISCARD;
+#define EAGAIN 11
 
-extern void
-free ( void *ptr )
-    ATTRIB_NOTHROW;
+
+
+int *__errno_location (void) ATTRIB_NOTHROW ATTRIB_CONST;
+
+# define errno (*__errno_location ())
+
+
+#endif  /* _ERRNO_H */
 
 
 __END_DECLS
 
-#endif  /* HGUARD_e138864469634ee39cde1436e8890ed3 */
+#endif /* HGUARD_abf720910adf4d2f9e7b4343fbf5cf7c */

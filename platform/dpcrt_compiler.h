@@ -145,8 +145,8 @@ __BEGIN_DECLS
 // example CONSTRUCT(my_init)
 // void my_init(void) { ... }
 #if __GNUC__ || __clang__
-#  define ATTRIB_CONSTRUCT(_func) static void _func (void) __attribute__((constructor));
-#  define ATTRIB_DESTRUCT(_func)  static void _func (void) __attribute__((destructor));
+#  define ATTRIB_CONSTRUCT(func)  __attribute__((constructor));
+#  define ATTRIB_DESTRUCT(func)   __attribute__((destructor));
 #  define ATTRIB_DEPRECATED       __attribute__((deprecated))
 #  define ATTRIB_PURE             __attribute__((pure))
 #  define ATTRIB_CONST            __attribute__((const))
@@ -155,11 +155,13 @@ __BEGIN_DECLS
 #  define ATTRIB_NONNULL(...)     __attribute__((nonnull(__VA_ARGS__)))
 #  define ATTRIB_MALLOC           __attribute__((malloc))
 #  define ATTRIB_NODISCARD        __attribute__((warn_unused_result)) /* The return value from the function should be checked */
+#  define ATTRIB_WUR              ATTRIB_NODISCARD /* [W]arn [U]nused [R]esult */
 #  define ATTRIB_LEAF             __attribute__((leaf))
 #  define ATTRIB_NOTHROW          __attribute__((nothrow))
 #  define ATTRIB_PRINTF(STRING_INDEX, FIRST_TO_CHECK) __attribute__ ((format(printf, (STRING_INDEX), (FIRST_TO_CHECK))))
 #  define ATTRIB_WEAK             __attribute__((weak))
-#  define ATTRUIB_TLS             __thread
+#  define ATTRIB_TLS             __thread
+
 
 #  define ATTRIB_ANNOTATE(...) __attribute__((annotate(__VA_ARGS__)))
 

@@ -29,7 +29,7 @@ __BEGIN_DECLS
 
 /* Bool type */
 #ifndef __cplusplus
-#  define true 1
+#  define true  1
 #  define false 0
 
 #  define bool _Bool
@@ -81,7 +81,7 @@ typedef uint8  bool8;
 typedef uint16 bool16;
 typedef uint32 bool32;
 
-typedef uint8  Byte;
+typedef uint8  BYTE;
 
 typedef float  F32;
 typedef double F64;
@@ -94,6 +94,20 @@ typedef int32  I32;
 typedef uint32 U32;
 typedef int64  I64;
 typedef uint64 U64;
+
+
+typedef U8* PTR;
+
+
+#if __PAL_LINUX__
+#  if __PAL_ARCHITECTURE_SIZE__ == 64
+typedef long time_t;
+#  else
+typedef long long time_t;
+#  endif
+#endif
+
+
 /* ----------------------- */
 
 
@@ -161,43 +175,35 @@ typedef uint64 U64;
    The data points to a valid c-string and it is _GUARANTEED_ to be NULL-TERMINATED.
 
    This string can store up to 2 GigaBytes of content. */
-
-typedef struct Str32 {
-    I32   bufsize;
-    I32   len;
-    char *data;
-} Str32;
-
 typedef struct Str32Hdr {
-    I32   bufsize;
     I32   len;
 } Str32Hdr;
 
 
-typedef struct Str32Hdr Str32Hdr;
+typedef struct Str32 {
+    I32   len;
+    char *data;
+} Str32;
 
 /* PStr32 :: stands for `PackedStr32`
    In the packed version of `Str32`, the string payload follows immediately
    the header (eg it does not live in a seperate place in memory) */
 typedef struct PStr32
 {
-    I32 bufsize;
     I32 len;
     char data[];
 } PStr32;
 
 #define STR32_LIT(S)                            \
     ((Str32) {                                  \
-        (I32) ARRAY_LEN(S),                     \
             (I32) STRLIT_LEN(S),                \
-            (char*) S                           \
+                (char*) S                       \
             })
 
 #define PSTR32_LIT(S) \
     ((PStr32) {                                  \
-        (I32) ARRAY_LEN(S),                      \
             (I32) STRLIT_LEN(S),                 \
-            S                                    \
+                S                                \
             })
 
 
@@ -206,19 +212,13 @@ static inline Str32
 __cstr_to_str32__(char *s, size_t str_len)
 {
     I32 clamped_str_len = (I32) (str_len & (size_t) I32_MAX);
-    Str32 result = { clamped_str_len, clamped_str_len, s };
+    Str32 result = { clamped_str_len, s };
     return result;
 }
 
 
 
-#if __PAL_LINUX__
-#  if __PAL_ARCHITECTURE_SIZE__ == 64
-typedef long time_t;
-#  else
-typedef long long time_t;
-#  endif
-#endif
+
 
 
 __END_DECLS

@@ -22,15 +22,12 @@
 #ifndef HGUARD_eeac0bd03e2846dca1cd3fb01fa7efe1
 #define HGUARD_eeac0bd03e2846dca1cd3fb01fa7efe1
 
-
-#include <stddef.h>
-#include <stdint.h>
-
+#include "dpcrt_types.h"
 
 __BEGIN_DECLS
 
 
-typedef uint32_t packed_bool;
+typedef U32 packed_bool;
 
 
 #define BOOL_PACKED_ARRAY_NELEMS(bitscount, typeof_arraymember)  \
