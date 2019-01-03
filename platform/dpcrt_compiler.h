@@ -161,6 +161,7 @@ __BEGIN_DECLS
 #  define ATTRIB_PRINTF(STRING_INDEX, FIRST_TO_CHECK) __attribute__ ((format(printf, (STRING_INDEX), (FIRST_TO_CHECK))))
 #  define ATTRIB_WEAK             __attribute__((weak))
 #  define ATTRIB_TLS             __thread
+#  define ATTRIB_ALWAYS_INLINE   __attribute__((always_inline))
 
 
 #  define ATTRIB_ANNOTATE(...) __attribute__((annotate(__VA_ARGS__)))
@@ -185,18 +186,19 @@ __BEGIN_DECLS
    not going to work under `MSVC`. Check if `MSVC` provides something similar
    for those attribs and make the macro expand to the correct text.
    If the equivalent attribute under `MSVC` just make the macro expand to `EMPTY` */
-#  define ATTRIB_NORETURN      __attribute__((__noreturn__))
-#  define ATTRIB_NONNULL(...)  __attribute__((nonnull(__VA_ARGS__)))
-#  define ATTRIB_MALLOC        __attribute__((malloc))
-#  define ATTRIB_NODISCARD     _Check_return_
-#  define ATTRIB_LEAF          __attribute__((leaf))
-#  define ATTRIB_NOTHROW       __declspec(nothrow)
+#  define ATTRIB_NORETURN       __attribute__((__noreturn__))
+#  define ATTRIB_NONNULL(...)   __attribute__((nonnull(__VA_ARGS__)))
+#  define ATTRIB_MALLOC         __attribute__((malloc))
+#  define ATTRIB_NODISCARD      _Check_return_
+#  define ATTRIB_LEAF           __attribute__((leaf))
+#  define ATTRIB_NOTHROW        __declspec(nothrow)
 #  define ATTRIB_PRINTF(STRING_INDEX, FIRST_TO_CHECK) __attribute__ ((format(printf, (STRING_INDEX), (FIRST_TO_CHECK))))
 #  define ATTRIB_PURE
 #  define ATTRIB_CONST
 #  define ATTRIB_FUNCTIONAL ATTRIB_CONST
-#  define ATTRIB_WEAK          __declspec(selectany)
-#  define ATTRIB_TLS           __declspec ( thread )
+#  define ATTRIB_WEAK           __declspec(selectany)
+#  define ATTRIB_TLS            __declspec ( thread )
+#  define ATTRIB_ALWAYS_INLINE  __forceinline
 
 #  define ATTRIB_ANNOTATE(...)
 

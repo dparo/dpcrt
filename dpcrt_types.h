@@ -98,6 +98,19 @@ typedef uint64 U64;
 
 typedef U8* PTR;
 
+#if __GNUC__ || __clang__
+typedef signed   __int128  int128_t;
+typedef unsigned __int128  uint128_t;
+#else
+#  error "Check for this COMPILER and ARCHITECTURE (Can we even use 128 bits wide integers?"
+#endif
+
+
+typedef int128_t  int128;
+typedef uint128_t uint128;
+typedef int128_t  I128;
+typedef uint128_t U128;
+
 
 #if __PAL_LINUX__
 #  if __PAL_ARCHITECTURE_SIZE__ == 64
@@ -124,9 +137,9 @@ typedef long long time_t;
 #  define I16_LIT(x) ((I16) (x))
 #  define U16_LIT(x) ((U16) (x))
 #  define I32_LIT(x) ((I32) (x))             // Example: 1234
-#  define U32_LIT(x) ((U32) (CONCAT(x, U)))  // Example: 1234U
-#  define I64_LIT(x) ((I64) (CONCAT(x, L)))  // Example: 1234L
-#  define U64_LIT(x) ((U64) (CONCAT(x, UL))) // Example: 1234UL
+#  define U32_LIT(x) ((U32)  (CONCAT(x, U)))  // Example: 1234U
+#  define I64_LIT(x) ((I64)  (CONCAT(x, L)))  // Example: 1234L
+#  define U64_LIT(x) ((U64)  (CONCAT(x, UL))) // Example: 1234UL
 #elif  __PAL_ARCHITECTURE_SIZE__ == 32
 #  define  I8_LIT(x) ( (I8) (x))
 #  define  U8_LIT(x) ( (U8) (x))

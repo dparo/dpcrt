@@ -387,6 +387,10 @@ marena_unpack_ref__unsafe(MArena *arena, MRef ref)
 
            It is not very polite to ask to access a raw pointer
            while in the middle of a `marena_begin` call.
+           Accessing a pointer in the middle of `marena_begin` `marena_commit`
+           pair can potentially be very unsafe due to the fact that the stack
+           is not guaranteed to maintain the same address due to the fact
+           that it may grow.
            Make sure to commit or discard before accessing raw pointers.
            If you fill that this restriction is too severe remove this assert.
         */

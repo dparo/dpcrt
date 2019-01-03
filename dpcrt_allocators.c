@@ -1187,11 +1187,11 @@ marena_realloc(MArena *arena,
 
     const size_t alignment = 128;
 
-    void *buffer = mem_realloc (  arena->realloc_strategy,
-                                  arena->buffer,
-                                  arena->data_max_size,
-                                  (size_t) newsize,
-                                  alignment);
+    void *buffer = mem_realloc (arena->realloc_strategy,
+                                arena->buffer,
+                                arena->data_max_size,
+                                (size_t) newsize,
+                                alignment);
     if ( buffer )
     {
         arena->buffer = buffer;
@@ -1803,7 +1803,8 @@ marena_add_str32_withdata( MArena *arena, Str32 str32 )
     bool result = marena_add_data(arena, &str32, (U32) sizeof(Str32Hdr));
     if (result)
     {
-        result = marena_add_data(arena, (U8*) &str32 + sizeof(Str32Hdr), (U32) str32.len + U32_LIT(1));
+        U8 *const string_data = (U8*) &str32 + sizeof(Str32Hdr);
+        result = marena_add_data(arena, string_data, (U32) str32.len + U32_LIT(1));
     }
     return result;
 }
@@ -1849,3 +1850,4 @@ MRef marena_push_pstr32         (MArena *arena, PStr32 *pstr32 )                
 MRef marena_push_str32_nodata   (MArena *arena, Str32 str32 )                               { MARENA_PUSH_WRAPPER_DEF(marena_add_str32_nodata   (arena, str32 )) }
 MRef marena_push_str32_withdata (MArena *arena, Str32 str32 )                               { MARENA_PUSH_WRAPPER_DEF(marena_add_str32_withdata (arena, str32 )) }
 MRef marena_push_alignment      (MArena *arena, U32 alignment)                              { MARENA_PUSH_WRAPPER_DEF(marena_ask_alignment      (arena, alignment)) }
+

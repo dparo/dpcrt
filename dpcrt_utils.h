@@ -60,9 +60,19 @@ __BEGIN_DECLS
 #define MAX(a, b)     ((a) < (b) ? (b) : (a))
 
 
+/* Returns true if `x` is a power of 2 */
+#define IS_POW2(x) (!((x) & ((x) - 1)))
+
 /* Align any generic value to any alignment */
 #define ALIGN(TYPE, N, S) ((TYPE)  ((((TYPE)(N) + (TYPE) ((TYPE)(S) - (TYPE) 1)) / (TYPE)(S)) * (TYPE)(S)))
-/* This macro is the same as ALIGN but only works when `N` & `S` are POWERS of 2.
+/* This macro is the same as ALIGN but only works when `S` is a POWER of 2.
+   `N` can still be any number.
+   @EXAMPLE 
+       POW2_ALIGN(1, 16)  -> 16
+       POW2_ALIGN(2, 16)  -> 16
+       POW2_ALIGN(16, 16) -> 16
+       POW2_ALIGN(17, 16) -> 32
+       POW2_ALIGN(1, 9)   -> Garbage (9 is not a power of 2)
    It can possibly lead to better assembly generation. */
 #define POW2_ALIGN(TYPE, N, S) ((TYPE) (  ((TYPE)(N) + ((TYPE)(S) - (TYPE) 1)) & ((TYPE) ~((TYPE)(S) - (TYPE) 1))  ))
 #define ALIGN_PTR(N, S) ((void*) (ALIGN(usize, N, S))
@@ -81,10 +91,6 @@ __BEGIN_DECLS
 #define enum16(TYPE) I16
 #define enum32(TYPE) I32
 #define enum64(TYPE) I64
-
-
-#define IS_POW2(x) (((x) & ((x) - 1)) == 0)
-
 
 
 #define memclr(SRC, SIZE)                       \
