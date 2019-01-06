@@ -155,6 +155,8 @@ typedef struct MFListChunk
 
     /* Chain of chunks belonging to the same allocation categ.
        Or NULL in case it's the last one in the chain. */
+
+    // struct MFListChunk *prev_chunk;
     struct MFListChunk *next_chunk;
 
     /* ---- */

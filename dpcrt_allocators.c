@@ -31,6 +31,8 @@
 #endif
 
 
+#include "dpcrt_valgrind_memcheck.h"
+
 
 
 /* ##########################################################################
@@ -865,12 +867,12 @@ mflist__score_categ_for_alloc(MFList *mflist,
 
 
 void
-mflist__suballoc_from_given_block(MFList *mflist,
-                                       MFListChunk *allocatable_chunk,
-                                       MFListBlock *allocatable_block,
-                                       MFListScoreCateg *score,
-                                       U32 alloc_size,
-                                       const bool zero_initialize)
+mflist__suballoc_fork(MFList *mflist,
+                      MFListChunk *allocatable_chunk,
+                      MFListBlock *allocatable_block,
+                      MFListScoreCateg *score,
+                      U32 alloc_size,
+                      const bool zero_initialize)
 {
     internal_assert((size_t) alloc_size % sizeof(MFListBlock) == 0);
     internal_assert(allocatable_block->size >= alloc_size);
@@ -1029,12 +1031,12 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, const bool zero_initialize)
     /* Suballocate from the the found block */
 
     __mflist_assert_integrity(allocatable_chunk);
-    mflist__suballoc_from_given_block(mflist,
-                                      allocatable_chunk,
-                                      allocatable_block,
-                                      &score,
-                                      alloc_size,
-                                      zero_initialize);
+    mflist__suballoc_fork(mflist,
+                          allocatable_chunk,
+                          allocatable_block,
+                          &score,
+                          alloc_size,
+                          zero_initialize);
 
     /* After the suballoc we're in a non
        valid integrity state. We need to keep

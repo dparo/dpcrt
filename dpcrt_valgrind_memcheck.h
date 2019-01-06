@@ -21,7 +21,7 @@
 #ifndef HGUARD_bc5f247cae544f6f8512fd5145e13340
 #define HGUARD_bc5f247cae544f6f8512fd5145e13340
 
-#include "dprt_utils.h"
+#include "dpcrt_utils.h"
 
 __BEGIN_DECLS
 
