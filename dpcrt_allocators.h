@@ -113,6 +113,8 @@ void  mpool_del      (MPool *mpool);
 
 
 
+struct MFListChunk;
+
 /* Blocks are chained in sequential order inside a given chunk:
    As long we are inside the chunk region the next block is given by:
 
@@ -126,6 +128,7 @@ void  mpool_del      (MPool *mpool);
 */
 typedef struct MFListBlock
 {
+    struct MFListChunk *parent_chunk;
     struct MFListBlock *prev_block;
     U32    size;                /* Size of the payload available for USER ALLOCATION !
                                    The size of the entire block it's thus composed
@@ -137,6 +140,12 @@ typedef struct MFListBlock
 
 typedef struct MFListChunk
 {
+    
+    /* Chain of chunks belonging to the same allocation categ.
+       Or NULL in case it's the last one in the chain. */
+    struct MFListChunk *prev_chunk;
+    struct MFListChunk *next_chunk;
+
     /* Size of the entire chunk including: this header and the
        total payload length available. The payload length is made of the sum of:
        - All the Blocks headers
@@ -151,14 +160,8 @@ typedef struct MFListChunk
        internal blocks and we pass directly to the next one.
        @NOTE :: A value of `0` for this field denotes that the chunk
        is full and there's no available block for allocation. */
-    U32   max_contiguous_block_size_avail;
-
-    /* Chain of chunks belonging to the same allocation categ.
-       Or NULL in case it's the last one in the chain. */
-
-    // struct MFListChunk *prev_chunk;
-    struct MFListChunk *next_chunk;
-
+    U32 max_contiguous_block_size_avail;
+    U8 categ;
     /* ---- */
     /* U8 payload[]; */
 } MFListChunk;

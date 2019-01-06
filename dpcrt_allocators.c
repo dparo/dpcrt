@@ -400,6 +400,8 @@ mflist__get_first_block_from_chunk(MFListChunk *chunk)
 
     internal_assert( chunk->size > (U8*) result - (U8*) chunk );
 
+    result = (MFListBlock*) ALIGN(usize, result, sizeof(MFListBlock));
+
     return result;
 }
 
@@ -423,16 +425,7 @@ mflist__next_block(MFListChunk *chunk,
 }
 
 
-typedef struct MFListUserAddrLocation
-{
-    enum MFListAllocCateg categ;
-    MFListChunk *prev_chunk;    /* Pointer to previous chunk or NULL if it's not present */
-    MFListChunk *chunk;         /* Actual chunk containing the addr */
-    MFListBlock *block;         /* Memory location of the block containing the allocation */
-} MFListUserAddrLocation;
-
-
-#define MFLIST__ENABLE_DEBUG_INTEGRITY_CHECKS (1) && __DEBUG
+#define MFLIST__ENABLE_DEBUG_INTEGRITY_CHECKS (0) && __DEBUG
 
 #if MFLIST__ENABLE_DEBUG_INTEGRITY_CHECKS
 #  define __mflist_assert_integrity(...) __mflist_assert_integrity__(__VA_ARGS__)
@@ -451,6 +444,7 @@ __mflist_assert_integrity__(MFListChunk *chunk)
     while(block)
     {
 
+        internal_assert(block->parent_chunk == chunk);
         /* Assert block pointer lives inside the chunk region */
 
         internal_assert((U8*) block + sizeof (MFListBlock) <=
@@ -479,7 +473,18 @@ __mflist_assert_integrity__(MFListChunk *chunk)
 }
 #endif
 
+ATTRIB_PURE MFListBlock *
+mflist__get_block_from_user_addr(void *_addr)
+{
+    MFListBlock *result = (MFListBlock *)
+        ( (U8*)_addr - sizeof(MFListBlock));
+    return result;
+}
 
+
+
+
+#if 0
 ATTRIB_PURE static MFListUserAddrLocation
 mflist__find_user_addr_location(MFList *mflist,
                                 void *_addr)
@@ -536,33 +541,38 @@ end_chunk_search: { }
     return result;
 }
 
+#endif
+
 
 static inline void
-mflist__init_chunk(MFListChunk *chunk, U32 chunk_size)
+mflist__init_chunk(MFListChunk *chunk, U32 chunk_size, enum MFListAllocCateg categ)
 {
+    chunk->prev_chunk = NULL;
     chunk->next_chunk = NULL;
     chunk->size = chunk_size;
+    chunk->categ = categ;
 
     MFListBlock *first_block = mflist__get_first_block_from_chunk(chunk);
     {
         *first_block = (MFListBlock) {0};
+        first_block->parent_chunk = chunk;
+        first_block->prev_block = NULL;
         first_block->is_avail = true;
         first_block->size = chunk->size - (U32) sizeof(MFListChunk) - (U32) sizeof(MFListBlock);
-        first_block->prev_block = NULL;
     }
 
     chunk->max_contiguous_block_size_avail = first_block->size;
 }
 
 static inline MFListChunk *
-mflist__new_chunk(U32 chunk_size)
+mflist__new_chunk(U32 chunk_size, enum MFListAllocCateg categ)
 {
     assert(IS_PAGE_ALIGNED(chunk_size));
     MFListChunk *newchunk = (MFListChunk*) mem_mmap(chunk_size);
 
     if (newchunk)
     {
-        mflist__init_chunk(newchunk, chunk_size);
+        mflist__init_chunk(newchunk, chunk_size, categ);
     }
 
     return newchunk;
@@ -573,12 +583,14 @@ mflist__new_chunk(U32 chunk_size)
 static inline MFListChunk *
 mflist__chain_new_chunk(MFList *mflist,
                         MFListChunk *prev_chunk,
-                        U32 chunk_size)
+                        U32 chunk_size,
+                        enum MFListAllocCateg categ)
 {
-    MFListChunk *newchunk = mflist__new_chunk(chunk_size);
+    MFListChunk *newchunk = mflist__new_chunk(chunk_size, categ);
 
     if (newchunk)
     {
+        newchunk->prev_chunk = prev_chunk;
         mflist->total_allocator_memory_usage += chunk_size;
     }
 
@@ -600,10 +612,11 @@ mflist__del_chunk(MFListChunk *chunk_to_be_deleted)
 
 static inline void
 mflist__del_chained_chunk(MFList *mflist,
-                          enum MFListAllocCateg categ,
-                          MFListChunk *prev_chunk,
                           MFListChunk *chunk_to_be_deleted)
 {
+    MFListChunk *const prev_chunk = chunk_to_be_deleted->prev_chunk;
+    const enum MFListAllocCateg categ = chunk_to_be_deleted->categ;
+
     if (prev_chunk)
     {
         prev_chunk->next_chunk = chunk_to_be_deleted->next_chunk;
@@ -643,96 +656,93 @@ mflist__is_chunk_empty(MFListChunk *chunk)
    @NOTE It may return NULL upon error or in case the blocks gets unmapped
    due to belonging to the categ of unbounded allocations (eg 1 dedicated chunk per allocation)*/
 static MFListBlock *
-mflist__free_with_location(MFList *mflist,
-                           MFListUserAddrLocation *loc)
+mflist__free_block_and_merge(MFList *mflist,
+                             MFListBlock *block_to_be_freed)
 {
-    internal_assert(loc->block && loc->chunk);
-    __mflist_assert_integrity(loc->chunk);
+    assert_msg(block_to_be_freed, "Couldn't find the block requested\n Possible invalid pointer or the chunk got resized (NOTE :: Chunks are not allowed to resize by design : Possible memory corruption)");
+    assert_msg(block_to_be_freed->parent_chunk, "Couldn't find the block requested\n Possible invalid pointer or the chunk got resized (NOTE :: Chunks are not allowed to resize by design : Possible memory corruption)");
+    assert_msg(!block_to_be_freed->is_avail, "Possible Double free");
 
-    MFListBlock *result = loc->block;
+    __mflist_assert_integrity(block_to_be_freed->parent_chunk);
 
-    assert_msg(loc->chunk, "Couldn't find the block requested\n Possible invalid pointer or the chunk got resized (NOTE :: Chunks are not allowed to resize by design : Possible memory corruption)");
-    assert_msg(loc->block, "Couldn't find the block requested\n Possible invalid pointer or the chunk got resized (NOTE :: Chunks are not allowed to resize by design : Possible memory corruption)");
-    assert_msg(!(loc->block->is_avail), "Possible Double free");
+    MFListBlock *result = block_to_be_freed;
 
-    if (!loc->chunk || !loc->block || !(loc->block->is_avail))
+    if (!block_to_be_freed->parent_chunk || !(block_to_be_freed->is_avail))
     {
         return NULL;
     }
+    MFListChunk *const parent_chunk = block_to_be_freed->parent_chunk;
 
-    if (loc->categ == MFListAllocCateg_More && loc->chunk)
+    const enum MFListAllocCateg categ = (parent_chunk->categ);
+
+    if (categ == MFListAllocCateg_More)
     {
-        mflist__del_chained_chunk(mflist, loc->categ, loc->prev_chunk, loc->chunk);
+        mflist__del_chained_chunk(mflist, parent_chunk);
         return NULL;
     }
 
 
-    if (loc->chunk && loc->block)
+    MFListBlock *block = block_to_be_freed;
+
+    MFListBlock *prev_block = block->prev_block;
+    MFListBlock *next_block = mflist__next_block(parent_chunk, block);
+
+    const U32 block_size_before_dellocation = block->size;
+    U32       combined_size                 = block->size;
+
+    mflist->total_user_memory_usage -= block_size_before_dellocation;
+
+    /* Try to combine blocks back together */
+    if (prev_block && prev_block->is_avail)
     {
-        MFListBlock *block = loc->block;
-
-        MFListBlock *prev_block = block->prev_block;
-        MFListBlock *next_block = mflist__next_block(loc->chunk, block);
-
-        const U32 block_size_before_dellocation = block->size;
-        U32       combined_size                 = block->size;
-
-        mflist->total_user_memory_usage -= block_size_before_dellocation;
-
-        /* Try to combine blocks back together */
-        if (prev_block && prev_block->is_avail)
+        if (next_block && next_block->is_avail)
         {
-            if (next_block && next_block->is_avail)
-            {
-                combined_size = prev_block->size
-                    + (U32) sizeof(MFListBlock) + block->size
-                    + (U32) sizeof(MFListBlock) + next_block->size;
-                prev_block->size = combined_size;
-            }
-            else
-            {
-                combined_size = prev_block->size + (U32) sizeof(MFListBlock) + block->size;
-                prev_block->size = combined_size;
-            }
-            result = prev_block;
+            combined_size = prev_block->size
+                + (U32) sizeof(MFListBlock) + block->size
+                + (U32) sizeof(MFListBlock) + next_block->size;
+            prev_block->size = combined_size;
         }
         else
         {
-            block->is_avail = true;
-
-
-            internal_assert(block->prev_block == prev_block);
-#if 0                           /* Is this code necessary :: i don't think so */
-            block->prev_block = prev_block;
-#endif
-            result = loc->block;
-
-            if (next_block && next_block->is_avail)
-            {
-                combined_size = block->size + (U32) sizeof(MFListBlock) + next_block->size;
-                block->size = combined_size;
-            }
-            else if (next_block)
-            {
-
-                internal_assert(next_block->prev_block == block);
-#if 0                           /* Is this code necessary :: i don't think so */
-                next_block->prev_block = block;
-#endif
-            }
-            else
-            {
-                /* @NOTE :: INTENTIONALLY EMPTY */
-            }
+            combined_size = prev_block->size + (U32) sizeof(MFListBlock) + block->size;
+            prev_block->size = combined_size;
         }
+        /* Set this new merged block as the new thing that needs to be returned */
+        result = prev_block;
+    }
+    else
+    {
+        block->is_avail = true;
 
-        if (combined_size > loc->chunk->max_contiguous_block_size_avail)
+
+        /* Is it legit to assert on this or do we need to add the code to update
+         the previous block :: `block->prev_block = prev_block;` ??? */
+        internal_assert(block->prev_block == prev_block);
+
+        if (next_block && next_block->is_avail)
         {
-            loc->chunk->max_contiguous_block_size_avail = combined_size;
+            combined_size = block->size + (U32) sizeof(MFListBlock) + next_block->size;
+            block->size = combined_size;
+        }
+        else if (next_block)
+        {
+
+            /* Is it legit to assert on this or do we need to add the code to update
+               the previous block :: `next_block->prev_block = block;` ??? */
+            internal_assert(next_block->prev_block == block);
+        }
+        else
+        {
+            /* @NOTE :: INTENTIONALLY EMPTY */
         }
     }
 
-    __mflist_assert_integrity(loc->chunk);
+    if (combined_size > parent_chunk->max_contiguous_block_size_avail)
+    {
+        parent_chunk->max_contiguous_block_size_avail = combined_size;
+    }
+
+    __mflist_assert_integrity(parent_chunk);
 
 
     return result;
@@ -741,10 +751,10 @@ mflist__free_with_location(MFList *mflist,
 void
 mflist_free(MFList *mflist, void *_addr)
 {
-    MFListUserAddrLocation loc = mflist__find_user_addr_location(mflist, _addr);
+    MFListBlock *block_to_be_freed = mflist__get_block_from_user_addr(_addr);
 
     /* @NOTE Discard result, we don't care about it */
-    (void) mflist__free_with_location(mflist, &loc);
+    (void) mflist__free_block_and_merge(mflist, block_to_be_freed);
 }
 
 
@@ -777,7 +787,7 @@ mflist_clear(MFList *mflist)
         }
         else
         {
-            mflist__init_chunk(chunk, chunk->size);
+            mflist__init_chunk(chunk, chunk->size, chunk->categ);
         }
 
         prev_chunk = chunk;
@@ -789,12 +799,12 @@ mflist_clear(MFList *mflist)
             tmp = chunk->next_chunk;
             if (mflist__should_del_chunk(chunk))
             {
-                mflist__del_chained_chunk(mflist, categ, prev_chunk, chunk);
+                mflist__del_chained_chunk(mflist, chunk);
                 chunk = prev_chunk;
             }
             else
             {
-                mflist__init_chunk(chunk, chunk->size);
+                mflist__init_chunk(chunk, chunk->size, chunk->categ);
             }
             prev_chunk = chunk;
             chunk = tmp;
@@ -828,20 +838,20 @@ mflist_del(MFList *mflist)
     memclr(mflist, sizeof(*mflist));
 }
 
-typedef struct MFListScoreCateg
+typedef struct MFListChunkInitRequirements
 {
     enum MFListAllocCateg categ;
     U32                   required_chunk_size;
-} MFListScoreCateg;
+} MFListChunkInitRequirements;
 
 
-static MFListScoreCateg
-mflist__score_categ_for_alloc(MFList *mflist,
+static MFListChunkInitRequirements
+mflist__get_chunk_requirements(MFList *mflist,
                               U32 alloc_size)
 {
     const U32 needed_chunk_size = alloc_size + (U32) sizeof(MFListChunk) + (U32) sizeof(MFListBlock);
 
-    MFListScoreCateg result = {0};
+    MFListChunkInitRequirements result = {0};
     result.categ = MFListAllocCateg_More;
     result.required_chunk_size = (U32) PAGE_ALIGN(needed_chunk_size);
 
@@ -870,7 +880,6 @@ void
 mflist__suballoc_fork(MFList *mflist,
                       MFListChunk *allocatable_chunk,
                       MFListBlock *allocatable_block,
-                      MFListScoreCateg *score,
                       U32 alloc_size,
                       const bool zero_initialize)
 {
@@ -879,14 +888,16 @@ mflist__suballoc_fork(MFList *mflist,
 
     U32 remainder_size = allocatable_block->size - alloc_size;
 
+    const enum MFListAllocCateg categ = allocatable_chunk->categ;
+    const U32 chunk_size = allocatable_chunk->size;
 
 
     const bool should_fit_a_new_block =
-        ((score->categ != MFListAllocCateg_More)
+        ((categ != MFListAllocCateg_More)
          && remainder_size > sizeof(MFListBlock)
          /* Avoid to create too small blocks, thus creating a long linked list
             of very very small blocks that are pretty much unusable */
-         && (remainder_size > (U32) (0.1f * (float) score->required_chunk_size)));
+         && (remainder_size > (U32) (0.1f * (float) chunk_size)));
 
     if (should_fit_a_new_block)
     {
@@ -897,10 +908,10 @@ mflist__suballoc_fork(MFList *mflist,
         /* Would the neblow fit ? */
         if ((U8*) newblock + sizeof(MFListBlock) < (U8*)allocatable_chunk + allocatable_chunk->size)
         {
-
-            newblock->is_avail = true;
+            newblock->parent_chunk = allocatable_chunk;
             newblock->prev_block = allocatable_block;
             newblock->size = ( remainder_size - (U32) sizeof(MFListBlock) );
+            newblock->is_avail = true;
         }
     }
     else
@@ -938,15 +949,18 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, const bool zero_initialize)
     alloc_size += (U32) sizeof(MFListBlock);
     alloc_size = ALIGN(U32, alloc_size, sizeof(MFListBlock));
 
-    MFListScoreCateg score = mflist__score_categ_for_alloc(mflist, alloc_size);
+    MFListChunkInitRequirements req = mflist__get_chunk_requirements(mflist, alloc_size);
 
     /* Allocate the first chunk if it's the first time */
-    if (!mflist->chunks[score.categ])
+    if (!mflist->chunks[req.categ])
     {
-        mflist->chunks[score.categ] = mflist__chain_new_chunk(mflist, NULL, score.required_chunk_size);
+        mflist->chunks[req.categ] = mflist__chain_new_chunk(mflist,
+                                                            NULL,
+                                                            req.required_chunk_size,
+                                                            req.categ);
     }
 
-    if (mflist->chunks[score.categ] == NULL)
+    if (mflist->chunks[req.categ] == NULL)
     {
         return NULL;
     }
@@ -955,7 +969,7 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, const bool zero_initialize)
     /* Now determine the correct chunk where we should allocate */
     MFListChunk *allocatable_chunk = NULL;
     {
-        MFListChunk *chunk = mflist->chunks[score.categ];
+        MFListChunk *chunk = mflist->chunks[req.categ];
         while (chunk)
         {
             __mflist_assert_integrity(chunk);
@@ -969,7 +983,7 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, const bool zero_initialize)
                 /* Try to chain/append a new chunk in case we ran out */
                 if (!chunk->next_chunk)
                 {
-                    chunk->next_chunk = mflist__chain_new_chunk(mflist, chunk, score.required_chunk_size);
+                    chunk->next_chunk = mflist__chain_new_chunk(mflist, chunk, req.required_chunk_size, req.categ);
                     if (!chunk->next_chunk)
                     {
                         /* Failed */
@@ -1034,7 +1048,6 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, const bool zero_initialize)
     mflist__suballoc_fork(mflist,
                           allocatable_chunk,
                           allocatable_block,
-                          &score,
                           alloc_size,
                           zero_initialize);
 
@@ -1072,6 +1085,7 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, const bool zero_initialize)
     return result;
 }
 
+
 void *
 mflist_realloc1 (MFList *mflist, void *oldptr, U32 newsize, bool zero_initialize)
 {
@@ -1085,25 +1099,28 @@ mflist_realloc1 (MFList *mflist, void *oldptr, U32 newsize, bool zero_initialize
 
     void *result = NULL;
 
-    MFListUserAddrLocation loc = mflist__find_user_addr_location(mflist, oldptr);
-    assert_msg(loc.chunk, "Couldn't find the block requested\n Possible invalid pointer or the chunk got resized (NOTE :: Chunks are not allowed to resize by design : Possible memory corruption)");
-    assert_msg(loc.block, "Couldn't find the block requested\n Possible invalid pointer or the chunk got resized (NOTE :: Chunks are not allowed to resize by design : Possible memory corruption)");
-    assert_msg(!(loc.block->is_avail), "Possible Double free");
+    MFListBlock *rblock = mflist__get_block_from_user_addr(oldptr);
+    MFListChunk *rchunk = rblock->parent_chunk;
+    const enum MFListAllocCateg categ = rchunk->categ;
 
-    if (loc.chunk && loc.block && !(loc.block->is_avail))
+    assert_msg(rblock->size, "Corrupted Block. Possible Memory overflow or Undeflow in UserLand");
+    assert_msg(rblock->is_avail == false, "Corrupted Block. Possible Memory overflow or Undeflow in UserLand");
+    assert_msg(rchunk, "Corrupted Block. Possible Memory overflow or Undeflow in UserLand");
+
+    if (rchunk && !(rblock->is_avail))
     {
-        MFListScoreCateg score = mflist__score_categ_for_alloc(mflist, newsize);
+        MFListChunkInitRequirements req = mflist__get_chunk_requirements(mflist, newsize);
 
-        if ((loc.categ == score.categ)
-            && (loc.block->size >= newsize))
+        if ((categ == req.categ)
+            && (rblock->size >= newsize))
         {
             /* We can reuse the same block, no need to free & alloc and copy data
                over */
-            result = (U8*) (loc.block) + sizeof(MFListBlock);
+            result = (U8*) (rblock) + sizeof(MFListBlock);
 
             if (zero_initialize)
             {
-                memclr((U8*) result + newsize, loc.block->size - newsize);
+                memclr((U8*) result + newsize, rblock->size - newsize);
             }
         }
         else
@@ -1113,11 +1130,11 @@ mflist_realloc1 (MFList *mflist, void *oldptr, U32 newsize, bool zero_initialize
                It can merge blocks together but it does not touch memory newmemory
                with new data, it just touches already existing block headers.
             */
-            U8 *old_block_addr = (U8*) loc.block;
-            U32 old_block_size = loc.block->size;
+            U8 *old_block_addr = (U8*) rblock;
+            U32 old_block_size = rblock->size;
             (void) old_block_addr, (void) old_block_size;
 
-            MFListBlock *merged_block = mflist__free_with_location(mflist, &loc);
+            MFListBlock *merged_block = mflist__free_block_and_merge(mflist, rblock);
             (void) merged_block;
 
             result = mflist_alloc1(mflist, newsize, false);
@@ -1852,4 +1869,3 @@ MRef marena_push_pstr32         (MArena *arena, PStr32 *pstr32 )                
 MRef marena_push_str32_nodata   (MArena *arena, Str32 str32 )                               { MARENA_PUSH_WRAPPER_DEF(marena_add_str32_nodata   (arena, str32 )) }
 MRef marena_push_str32_withdata (MArena *arena, Str32 str32 )                               { MARENA_PUSH_WRAPPER_DEF(marena_add_str32_withdata (arena, str32 )) }
 MRef marena_push_alignment      (MArena *arena, U32 alignment)                              { MARENA_PUSH_WRAPPER_DEF(marena_ask_alignment      (arena, alignment)) }
-
