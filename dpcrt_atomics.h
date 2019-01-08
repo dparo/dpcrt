@@ -15,10 +15,10 @@ __BEGIN_DECLS
     __atomic_load_n(ptr, __ATOMIC_SEQ_CST)
 #  define /* type */ atomic_store(/* type* */ ptr, /* type */ value)  \
     __atomic_store_n(ptr, value, __ATOMIC_SEQ_CST)
-#  define /* type */ atomic_exchange_n(/* type* */ ptr, /* type */ value) \
+#  define /* type */ atomic_exchange(/* type* */ ptr, /* type */ value) \
     __atomic_compare_exchange_n(ptr, value, __ATOMIC_SEQ_CST)
 #  define /* bool */ atomic_compare_exchange(/* type* */ ptr, /* type* */ expected_out_addr, /* type */ desired) \
-    __atomic_compare_exchange_n(ptr, expected_out, desired, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
+    __atomic_compare_exchange_n(ptr, expected_out_addr, desired, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
 
 
 
@@ -57,7 +57,7 @@ __BEGIN_DECLS
     
 /* Only for `bool` or `char types */
 #  define /* void */ atomic_test_and_set(/* char* || bool* */ ptr)    \
-    __atomic_fetch_or(ptr, __ATOMIC_SEQ_CST)
+    __atomic_test_and_set(ptr, __ATOMIC_SEQ_CST)
 #  define /* void */ atomic_clear(/* char* || bool* */ ptr) \
     __atomic_clear(ptr, __ATOMIC_SEQ_CST)
 #  define /* void */ atomic_thread_fence()      \

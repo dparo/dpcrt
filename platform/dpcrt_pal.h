@@ -81,13 +81,25 @@ typedef int   pid_t;
 typedef int   FileHandle;
 typedef pid_t ProcHandle;
 typedef void* DllHandle;
+/* @NOTE `Invalid_ThreadHandle` is not provided since
+   it is not available under UNIX platforms.
+   Windows Guarantees that a `HANDLE` type containing 0 means
+   an invalid thred handle, but on UNIX the `pthread_t` does
+   not reserve any value (it also does not guarantee that `pthread_t` may
+   be an integral type. */
+typedef U64   ThreadHandle;
+typedef pid_t ThreadID;
 
-static const ProcHandle Invalid_ProcHandle = -1;
-static const FileHandle Invalid_FileHandle = -1;
-static const FileHandle Stdin_FileHandle   = 0;
-static const FileHandle Stdout_FileHandle  = 1;
-static const FileHandle Stderr_FileHandle  = 2;
-static const DllHandle  Invalid_DllHandle  = 0;
+
+static const ProcHandle   Invalid_ProcHandle   = -1;
+static const FileHandle   Invalid_FileHandle   = -1;
+static const FileHandle   Stdin_FileHandle     = 0;
+static const FileHandle   Stdout_FileHandle    = 1;
+static const FileHandle   Stderr_FileHandle    = 2;
+static const DllHandle    Invalid_DllHandle    = 0;
+
+
+static const ThreadHandle Invalid_ThreadHandle = 0; /* @TODO Is `0` a valid marker for an invalid ThreadHandle on Linux ???? */
 
 
 #elif __PAL_WINDOWS__
@@ -97,14 +109,16 @@ static const DllHandle  Invalid_DllHandle  = 0;
 typedef HFILE   FileHandle;
 typedef int     ProcHandle;
 typedef HMODULE DllHandle;
+typedef HANDLE  ThreadHandle;
+typedef DWORD   ThreadID;
 
-static const ProcHandle Invalid_ProcHandle = ?????;
-static const DllHandle  Invalid_DllHandle  = 0;
-static const FileHandle Invalid_FileHandle = HFILE_ERROR;
-static const FileHandle Stdin_FileHandle   = 0;
-static const FileHandle Stdout_FileHandle  = 1;
-static const FileHandle Stderr_FileHandle  = 2;
-static const DllHandle  Invalid_DllHandle  = 0;
+static const ProcHandle   Invalid_ProcHandle   = ?????;
+static const DllHandle    Invalid_DllHandle    = 0;
+static const FileHandle   Invalid_FileHandle   = HFILE_ERROR;
+static const FileHandle   Stdin_FileHandle     = 0;
+static const FileHandle   Stdout_FileHandle    = 1;
+static const FileHandle   Stderr_FileHandle    = 2;
+static const DllHandle    Invalid_DllHandle    = 0;
 #else
 # error "Platform Not Supported"
 #endif
@@ -151,6 +165,10 @@ pal_init(void) ATTRIB_CONSTRUCT(pal_init);
  instead after a valid call into  `pal_init` is made */
 size_t
 pal_get_page_size(void);
+
+
+ThreadID
+pal_get_current_thread_id(void);
 
 
 bool
@@ -389,7 +407,7 @@ __inline__ static void __trap_instruction(void)
 #endif
 
 
-#if defined __DEBUG
+#if __DEBUG
 #  define TODO(msg)                do { } while(0)
 #  define todo(msg)                TODO(msg)
 #  define todo_assert(x)           assert(x)
@@ -406,6 +424,35 @@ __inline__ static void __trap_instruction(void)
 #define not_implemented(...)    assert_msg ( 0, "Not implemented code path" )
 
 
+
+#if __DEBUG
+
+#include "dpcrt_atomics.h"
+
+
+/* This macro can be usefull in debug Builds to mark a function to be `thread_safe`.
+   If the function is called from multiple thread, this macro will assert.
+   The first thread that calls a function marked with `not_thread_safe()` will
+   own the function from now on. Any other thread trying to reuse the function
+   from now on will trigger an assertion.
+   This can be usefull in functions where you use global variables or static variables,
+   or even in callback functions arriving from some other library that you're
+   not sure in which thread you will get called from. */
+#  define not_thread_safe()                                             \
+    do {                                                                \
+        static ThreadID __last_thread_id__ = 0;                         \
+        ThreadID __expected__ = 0;                                      \
+        ThreadID id = pal_get_current_thread_id();                      \
+        if (!atomic_compare_exchange(&__last_thread_id__, &__expected__, id)) \
+        {                                                               \
+            assert_msg(__expected__ == id,                              \
+                       "This thread does not own this function");       \
+        }                                                               \
+    } while(0)
+
+#else
+#  define not_thread_safe()
+#endif
 
 
 

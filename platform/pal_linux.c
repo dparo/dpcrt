@@ -29,6 +29,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/inotify.h>
@@ -146,6 +148,16 @@ pal_get_page_size( void )
     }
     return result;
 }
+
+ThreadID
+pal_get_current_thread_id(void)
+{
+    /* GLIBC does not expose the function `pid_t gettid(void);` (thank you GLIBC).
+       We need to use a syscall to get this functionality. */
+    pid_t tid = (pid_t) syscall(SYS_gettid);
+    return tid;
+}
+
 
 bool
 pal_sleep_ms(U32 sleep_ms)

@@ -425,7 +425,7 @@ mflist__next_block(MFListChunk *chunk,
 }
 
 
-#define MFLIST__ENABLE_DEBUG_INTEGRITY_CHECKS (0) && __DEBUG
+#define MFLIST__ENABLE_DEBUG_INTEGRITY_CHECKS (1) && __DEBUG
 
 #if MFLIST__ENABLE_DEBUG_INTEGRITY_CHECKS
 #  define __mflist_assert_integrity(...) __mflist_assert_integrity__(__VA_ARGS__)
