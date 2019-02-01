@@ -27,12 +27,21 @@
 
 __BEGIN_DECLS
 
+#ifndef NULL
+#  define NULL ((void*) 0x0)
+#endif
+
+
 /* Bool type */
 #ifndef __cplusplus
 #  define true  1
 #  define false 0
 
+#if __STDC_VERSION__ >= STD_C99_VERSION
 #  define bool _Bool
+#else
+typedef int bool;
+#endif
 
 #  define __bool_true_false_are_defined 1
 #endif
@@ -112,8 +121,8 @@ typedef int128_t  I128;
 typedef uint128_t U128;
 
 
-#if __PAL_LINUX__
-#  if __PAL_ARCHITECTURE_SIZE__ == 64
+#if __DPCRT_LINUX
+#  if __DPCRT_ARCH_SIZE == 64
 typedef long time_t;
 #  else
 typedef long long time_t;
@@ -131,22 +140,22 @@ typedef long long time_t;
    sure that we get the correct size for the suffices that we use.
    If we want to support more compiler/architectures, those literals
    should be wrapped with a `#if` preprocessor macros */
-#if __PAL_ARCHITECTURE_SIZE__ == 64
-#  define  I8_LIT(x) ( (I8) (x))
-#  define  U8_LIT(x) ( (U8) (x))
-#  define I16_LIT(x) ((I16) (x))
-#  define U16_LIT(x) ((U16) (x))
-#  define I32_LIT(x) ((I32) (x))             // Example: 1234
-#  define U32_LIT(x) ((U32)  (CONCAT(x, U)))  // Example: 1234U
-#  define I64_LIT(x) ((I64)  (CONCAT(x, L)))  // Example: 1234L
-#  define U64_LIT(x) ((U64)  (CONCAT(x, UL))) // Example: 1234UL
-#elif  __PAL_ARCHITECTURE_SIZE__ == 32
+#if __DPCRT_ARCH_SIZE == 64
 #  define  I8_LIT(x) ( (I8) (x))
 #  define  U8_LIT(x) ( (U8) (x))
 #  define I16_LIT(x) ((I16) (x))
 #  define U16_LIT(x) ((U16) (x))
 #  define I32_LIT(x) ((I32) (x))             // Example: 1234
 #  define U32_LIT(x) ((U32) (CONCAT(x, U)))  // Example: 1234U
+#  define I64_LIT(x) ((I64) (CONCAT(x, L)))  // Example: 1234L
+#  define U64_LIT(x) ((U64) (CONCAT(x, UL))) // Example: 1234UL
+#elif __DPCRT_ARCH_SIZE == 32
+#  define  I8_LIT(x) ( (I8) (x))
+#  define  U8_LIT(x) ( (U8) (x))
+#  define I16_LIT(x) ((I16) (x))
+#  define U16_LIT(x) ((U16) (x))
+#  define I32_LIT(x) ((I32) (x))              // Example: 1234
+#  define U32_LIT(x) ((U32) (CONCAT(x, U)))   // Example: 1234U
 #  define I64_LIT(x) ((I64) (CONCAT(x, LL)))  // Example: 1234LL
 #  define U64_LIT(x) ((U64) (CONCAT(x, ULL))) // Example: 1234ULL
 #endif
@@ -182,17 +191,14 @@ typedef long long time_t;
 #define I64_MIN (I64_LIT(0x8000000000000000))
 
 
-
+typedef struct Str32Hdr {
+    I32   len;
+} Str32Hdr;
 
 /* Very simple c-string wrappers with len precomputed, and a buffer size associated.
    The data points to a valid c-string and it is _GUARANTEED_ to be NULL-TERMINATED.
 
    This string can store up to 2 GigaBytes of content. */
-typedef struct Str32Hdr {
-    I32   len;
-} Str32Hdr;
-
-
 typedef struct Str32 {
     I32   len;
     char *data;
@@ -224,14 +230,140 @@ typedef struct PStr32
 static inline Str32
 __cstr_to_str32__(char *s, size_t str_len)
 {
-    I32 clamped_str_len = (I32) (str_len & (size_t) I32_MAX);
-    Str32 result = { clamped_str_len, s };
+    Str32 result = {
+        (I32) (str_len & (size_t) I32_MAX),
+        s
+    };
     return result;
 }
 
 
 
+/* /\* Singly Linked List *\/ */
+/* #define SLIST_INIT(head)                        \ */
+/*     (head)->next = NULL */
 
+/* #define SLIST_PUSH(head, new_elem)              \ */
+/*     do {                                        \ */
+/*         (new_elem)->next = (head);              \ */
+/*         (head) = (new_elem);                    \ */
+/*     } while(0); */
+
+/* #define SLIST_POP(head)              \ */
+/*     do {                             \ */
+/*         (head) = (head)->next;       \ */
+/*     } while(0); */
+
+
+/* #define SLIST_CHAIN(head, target, new_elem)     \ */
+/*     do {                                        \ */
+/*         assert(head);                           \ */
+/*         (new_elem)->next = (target)->next;      \ */
+/*         (target)->next = new_elem;              \ */
+/*     } while(0) */
+
+/* #define SLIST_UNCHAIN(head, target, ll_prev_in_chain)                   \ */
+/*     do {                                                                \ */
+/*         if ((head) == (target)) { SLIST_POP(head); }                    \ */
+/*         else if ((ll_prev_in_chain)->next) { (ll_prev_in_chain)->next = (target)->next; } \ */
+/*         (target)->next = NULL;                                          \ */
+/*     } while(0); */
+
+
+
+/* Doubly Linked List */
+/* void DLIST_INIT(T *head) */
+#define DLIST_INIT(head)                        \
+    do {                                        \
+        (head)->next = NULL;                    \
+        (head)->prev = NULL;                    \
+    } while(0)
+
+/* void DLIST_PUSH(T& *head, T *new_elem) */
+#define DLIST_PUSH(head, new_elem)                     \
+    do {                                               \
+        (new_elem)->next = *(head);                    \
+        (new_elem)->prev = NULL;                       \
+        if (*(head)) { (*(head))->prev = new_elem; }   \
+        *(head) = new_elem;                            \
+    } while(0);
+
+
+ATTRIB_CONST static inline void *
+__dlist_pop__(void *restrict *restrict const head,
+              void *restrict *restrict const head_next,       // (*head)->next
+              void *restrict *restrict const head_next_prev)  // (*head)->next->prev)
+{
+    if (!(*head)) return NULL;
+    void *const result = *head;
+    void *const temp = *head_next;
+    *head_next = NULL;
+    *head = temp;
+    if (*head_next)
+        *(head_next_prev) = NULL;
+    return result;
+}
+
+/* T* DLIST_POP(T& *head) */
+#define DLIST_POP(head)                                                 \
+    __dlist_pop__((void *restrict *restrict const) (head),              \
+                  (void *restrict *restrict const) &((*(head))->next),  \
+                  (void *restrict *restrict const) &((*(head))->next->prev))
+
+
+/* void DLIST_ENQUEUE(T& *tail, T *new_elem) */
+#define DLIST_ENQUEUE(tail, new_elem)           \
+    do {                                        \
+        (tail)->next = (new_elem);              \
+        (new_elem)->next = NULL;                \
+        (new_elem)->prev = (tail);              \
+        (tail) = (new_elem);                    \
+    } while(0);
+
+
+ATTRIB_CONST static inline void *
+__dlist_dequeue__(void *restrict *restrict const tail,
+                  void *restrict *restrict const tail_prev,       // (*tail)->prev
+                  void *restrict *restrict const tail_prev_next)  // (*tail)->prev->next)
+{
+    if (!(*tail)) return NULL;
+    void *const result = *tail;
+    void *const temp = *tail_prev;
+    *tail_prev = NULL;
+    *tail = temp;
+    if (*tail_prev)
+        *(tail_prev_next) = NULL;
+    return result;
+}
+
+
+/* T* DLIST_DEQUEUE(T& *tail) */
+#define DLIST_DEQUEUE(tail)                                             \
+    __dlist_dequeue__((void *restrict *restrict const) &(tail),         \
+                      (void *restrict *restrict const) &((*tail)->prev), \
+                      (void *restrict *restrict const) &((*tail)->prev->next)))
+
+
+/* void DLIST_CHAIN(T *head, T *target, T *new_elem) */
+#define DLIST_CHAIN(head, target, new_elem)     \
+    do {                                        \
+        assert(head);                           \
+        (new_elem)->prev = (target);            \
+        (new_elem)->next = (target)->next;      \
+        (target)->next   = &(new_elem);         \
+    } while(0)
+
+/* void DLIST_UNCHAIN(T *head, T *target) */
+#define DLIST_UNCHAIN(head, target)                    \
+    do {                                               \
+        if (((target)->next))                          \
+            ((target)->next)->prev = ((target)->prev); \
+        if (((target)->prev))                          \
+            ((target)->prev)->next = ((target)->next); \
+        if ((target) == (head))                        \
+            (head) = (target)->next;                   \
+        DLIST_INIT(target);                            \
+    } while(0);
 
 
 __END_DECLS

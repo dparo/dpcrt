@@ -22,17 +22,11 @@
 #ifndef HGUARD_183f4851c423485faffa8b8cd1f85f24
 #define HGUARD_183f4851c423485faffa8b8cd1f85f24
 
-#include "../build_config.h"
 #include "dpcrt_compiler.h"
 #include "dpcrt_types.h"
 #include <stdc/string.h>
 
 __BEGIN_DECLS
-
-#ifndef NULL
-#  define NULL ((void*) 0x0)
-#endif
-
 
 #define cast(T, expr) (T) (expr)
 #define global extern
@@ -98,6 +92,12 @@ __BEGIN_DECLS
 
 #define zero_struct(S)                          \
     memclr(S, sizeof(*(S)))
+
+
+
+
+
+
 
 __END_DECLS
 

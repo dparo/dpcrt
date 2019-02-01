@@ -76,7 +76,7 @@ ATTRIB_CONST static inline I8 i8be_to_i8(I8BE i8be) { return i8be.val; }
 ATTRIB_CONST static inline U8 u8be_to_u8(U8BE u8be) { return u8be.val; }
 
 
-#if __PAL_LITTLE_ENDIAN__
+#if __DPCRT_LITTLE_ENDIAN
 #  define BLESWAP_U16(x) (x)
 #  define BLESWAP_U32(x) (x)
 #  define BLESWAP_U64(x) (x)
@@ -84,7 +84,7 @@ ATTRIB_CONST static inline U8 u8be_to_u8(U8BE u8be) { return u8be.val; }
 #  define BBESWAP_U16(x) (bswap_u16(x))
 #  define BBESWAP_U32(x) (bswap_u32(x))
 #  define BBESWAP_U64(x) (bswap_u64(x))
-#elif __PAL_BIG_ENDIAN__
+#elif __DPCRT_BIG_ENDIAN
 #  define BLESWAP_U16(x) (bswap_u16(x))
 #  define BLESWAP_U32(x) (bswap_u32(x))
 #  define BLESWAP_U64(x) (bswap_u64(x))
@@ -113,7 +113,7 @@ ATTRIB_CONST static inline U64 u64be_to_u64(U64BE u64be) { return (U64) BBESWAP_
 
 /* Platform Dependent Floating Point Endiannes to Host Endian */
 
-#if __PAL_LITTLE_ENDIAN__
+#if __DPCRT_LITTLE_ENDIAN
 
 ATTRIB_CONST static inline F32 f32le_to_f32(F32LE f32le) { return f32le.fval; }
 ATTRIB_CONST static inline F64 f64le_to_f64(F64LE f64le) { return f64le.fval; }
@@ -129,7 +129,7 @@ ATTRIB_CONST static inline F64 f64be_to_f64(F64BE f64be) {
     return f64le.fval;
 }
 
-#elif __PAL_BIG_ENDIAN__
+#elif __DPCRT_BIG_ENDIAN
 
 ATTRIB_CONST static inline F32 f32le_to_f32(F32LE f32le) {
     F32LE f32le;

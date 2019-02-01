@@ -94,7 +94,7 @@ libc_print_stack_trace(void)
 void
 pal_print_stack_trace(void)
 {
-    char name_buf[512]; 
+    char name_buf[512];
     char pid_buf[30];
     snprintf(pid_buf, sizeof(pid_buf), "%d", getpid());
     ssize_t proc_self_exe_len = readlink("/proc/self/exe", name_buf, sizeof(name_buf) - 1);
@@ -475,6 +475,8 @@ pal_munmap( void* addr, size_t size )
 bool
 pal_init( void )
 {
+    non_thread_safe();
+
     int result = true;
 
     if (!S_pal_initialized)

@@ -19,8 +19,7 @@
  * THE SOFTWARE.
  */
 
-#include "statistics.h"
-#include <dpcrt_math.h>
+#include "dpcrt_math.h"
 #include <math.h>
 
 F32
@@ -29,10 +28,10 @@ gauss_erf_approx_f32(F32 x)
     // https://en.wikipedia.org/wiki/Error_function#Approximation_with_elementary_functions
 
     const F32 denominator = (1.0f
-                                 + 0.278393f * x
-                                 + 0.230389f * powf(x, 2)
-                                 + 0.000972f * powf(x, 3)
-                                 + 0.078108f * powf(x, 4));
+                             + 0.278393f * x
+                             + 0.230389f * powf(x, 2)
+                             + 0.000972f * powf(x, 3)
+                             + 0.078108f * powf(x, 4));
     const F32 result = 1.0f - (1.0f / denominator);
     return result;
 }
@@ -43,10 +42,10 @@ gauss_erf_approx_f64(F64 x)
     // https://en.wikipedia.org/wiki/Error_function#Approximation_with_elementary_functions
 
     const F64 denominator = (1.0
-                                 + 0.278393 * x
-                                 + 0.230389 * pow(x, 2)
-                                 + 0.000972 * pow(x, 3)
-                                 + 0.078108 * pow(x, 4));
+                             + 0.278393 * x
+                             + 0.230389 * pow(x, 2)
+                             + 0.000972 * pow(x, 3)
+                             + 0.078108 * pow(x, 4));
     const F64 result = 1.0 - (1.0 / denominator);
     return result;
 }

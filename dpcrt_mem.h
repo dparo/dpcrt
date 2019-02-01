@@ -85,7 +85,7 @@ mem_realloc__debug ( enum ReallocStrategy realloc_strategy,
 
 
 
-#if MEMORY_LAYER_DEBUG_CODE
+#if __DPCRT_MEM_LAYER__COMPILE_DEBUG_CODE
 #  define mem_realloc(realloc_strategy, addr, old_size, new_size, alignment) \
     mem_realloc__debug((realloc_strategy), (addr), (old_size), (new_size), (alignment))
 #else

@@ -21,7 +21,6 @@
 
 #include "dpcrt_allocators.h"
 
-
 #ifdef MPOOL_DISABLE_DEBUG_ASSERTION
 #  define internal_assert(...)
 #  define internal_assert_msg(...)
@@ -157,6 +156,7 @@ mpool__init_chunk(MPoolChunk *chunk)
                                           + MPOOL_RESERVED_CHUNK_HEADER_SIZE);
     chunk->next_block->following_blocks_are_all_free = true;
 }
+
 
 static inline MPoolChunk *
 mpool__new_chunk(U32 chunk_size)
@@ -478,6 +478,7 @@ mflist__get_block_from_user_addr(void *_addr)
 {
     MFListBlock *result = (MFListBlock *)
         ( (U8*)_addr - sizeof(MFListBlock));
+    internal_assert(result == container_of(MFListBlock, _addr, payload));
     return result;
 }
 
@@ -847,7 +848,7 @@ typedef struct MFListChunkInitRequirements
 
 static MFListChunkInitRequirements
 mflist__get_chunk_requirements(MFList *mflist,
-                              U32 alloc_size)
+                               U32 alloc_size)
 {
     const U32 needed_chunk_size = alloc_size + (U32) sizeof(MFListChunk) + (U32) sizeof(MFListBlock);
 
@@ -1025,7 +1026,7 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, const bool zero_initialize)
         {
             if (block->is_avail && block->size >= alloc_size)
             {
-                /* Found the block split it in order to suballocate */
+                /* Found the block  */
                 allocatable_block = block;
                 break;
             }
@@ -1056,7 +1057,7 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, const bool zero_initialize)
        to scan the entire blocks inside the chunk
        in order to update the `max_contiguos_block_size_avail`
        accordingly */
-    //__mflist_assert_integrity(allocatable_chunk);
+    if (0) __mflist_assert_integrity(allocatable_chunk);
 
 
     result = (U8*) allocatable_block + sizeof(MFListBlock);
@@ -1243,6 +1244,9 @@ marena_grow(MArena *arena)
 }
 
 
+#ifndef __DPCRT_MEM_LAYER__ARENA_ALWAYS_FORCE_REALLOC_AT_EVERY_PUSH
+#  define __DPCRT_MEM_LAYER__ARENA_ALWAYS_FORCE_REALLOC_AT_EVERY_PUSH 1
+#endif
 
 static bool
 marena_accomodate_for_size(MArena *arena, U32 size)
@@ -1273,7 +1277,7 @@ marena_accomodate_for_size(MArena *arena, U32 size)
         }
     }
 #if __DEBUG
-    else if (MEMORY_ARENA_ALWAYS_FORCE_REALLOC_AT_EVERY_PUSH & can_realloc)
+    else if (__DPCRT_MEM_LAYER__ARENA_ALWAYS_FORCE_REALLOC_AT_EVERY_PUSH & can_realloc)
     {
         // If the arena didn't really need to grow, and the macro
         //    is defined we're going to force a new grow
@@ -1827,7 +1831,6 @@ marena_add_str32_withdata( MArena *arena, Str32 str32 )
     }
     return result;
 }
-
 
 
 bool

@@ -135,7 +135,7 @@ typedef struct MFListBlock
                                    of `sizeof(MFListBlock) + block->size` */
     bool32 is_avail;
     /* ---- */
-    /* U8 payload[]; */
+    U8 payload[];
 } MFListBlock;
 
 typedef struct MFListChunk
@@ -246,7 +246,6 @@ typedef struct MFList
 
  */
 static inline bool mflist_init(MFList *mflist) { memclr(mflist, sizeof(MFList)); return true; }
-bool  mflist_init     (MFList *mflist);
 void* mflist_alloc1   (MFList *mflist, U32 alloc_size, bool zero_initialize);
 void  mflist_free     (MFList *mflist, void *ptr);
 void* mflist_realloc1 (MFList *mflist, void *oldptr, U32 newsize, bool zero_initialize);

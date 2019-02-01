@@ -22,38 +22,51 @@
 #define HGUARD_39b345774ad64521a296089279f0123a
 
 
+#if __DPCRT_DEFINED != 1
+/* Make sure that the translation unit this file is inlcuded from, has all the defines
+   the DPCRT requires in order to maintain ABI compatability correct across translation units.
+   Plase refer to the makefile to see what defines are required from DPCRT.
+   
+   Make sure to compile the translation unit with all the ${DPCRT_DEFINES} defined
+   in the Makefile. */
+#   error "Make sure that this translation unit uses the defines required in order to use DPCRT"
+#endif
+
 /* @NOTE :: IMPORTANT
    =======================================
 
    This file should not depend on any other file (eg it should not
    include anything else, other than the features already provided
-   from the compiler the language, and the build system.
- */
+   from the compiler, the language, and the build system. */
 
-#ifndef __PAL_WINDOWS__
-#  define __PAL_WINDOWS__ _WIN16 || _WIN32 || _WIN64
-#endif
+#ifndef __DPCRT_WINDOWS
+#  if _WIN16 || _WIN32 || _WIN64
+#    define __DPCRT_WINDOWS (_WIN16 || _WIN32 || _WIN64)
+#  else
+#    define __DPCRT_WINDOWS 0
+#  endif
 
-# if _WIN16
-#   define __PAL_WINDOWS_VERSION__ (16)
-# endif
-# if _WIN32
-#   define __PAL_WINDOWS_VERSION__ (32)
-# endif
-# if _WIN64
-#   define __PAL_WINDOWS_VERSION__ (64)
-# endif
-
-
-#ifndef __PAL_LINUX__
-#  if __linux__
-#    define __PAL_LINUX__ (1)
+#  if _WIN16
+#    define __DPCRT_WINDOWS_VERSION (16)
+#  endif
+#  if _WIN32
+#    define __DPCRT_WINDOWS_VERSION (32)
+#  endif
+#  if _WIN64
+#    define __DPCRT_WINDOWS_VERSION (64)
 #  endif
 #endif
 
-#ifndef __PAL_APPLE__
+
+#ifndef __DPCRT_LINUX
+#  if __linux__
+#    define __DPCRT_LINUX (1)
+#  endif
+#endif
+
+#ifndef __DPCRT_APPLE
 #  if __APPLE__
-#    define __PAL_APPLE__ (1)
+#    define __DPCRT_APPLE (1)
 #  endif
 #endif
 
@@ -96,7 +109,7 @@ __BEGIN_DECLS
 
 
 /* Standard versions defined by the compiler. Example usage
-   # if __STDC_VERSION__ >= C11_STD_VERSION
+   # if __STDC_VERSION__ >= STD_C11_VERSION
    {| Do things here that requires at least c11 support |}
    # endif
 */
@@ -209,7 +222,7 @@ __BEGIN_DECLS
 
 
 // Compiler DLL Support, please refer to page        https://gcc.gnu.org/wiki/Visibility
-#if __PAL_WINDOWS__ || __CYGWIN__
+#if __DPCRT_WINDOWS || __CYGWIN__
   #if BUILDING_DLL
     #if __GNUC__ || __clang__
       #define DLL_GLOBAL __attribute__ ((dllexport))
@@ -257,6 +270,22 @@ __BEGIN_DECLS
 # endif
 
 
+#define offset_of(type, member) offsetof(type, member)
+
+# if __GNUC__ || __clang__
+// This macro checks that 2 variables have the same type. If they
+// do not have the same type, the GCC compiler will trigger a warning
+#  define TYPE_CHECK(var1, var2) \
+    const typeof(var1) *__mptr = &(var2)
+# else
+#  define TYPE_CHECK(var1, var2)
+# endif
+
+
+// Usefull macro from the Linux Kernel. This macro returns the
+// 
+#define container_of(type, ptr, member)         \
+    ((type *)((char *)(((type *)0)->member) - offsetof(type, member)))
 
 
 /* ===================================
@@ -272,6 +301,17 @@ __BEGIN_DECLS
 
 #define static_assert DPCRT_STATIC_ASSERT
 
+
+
+/* Returns the LEAST SIGNIFICANT BYTE ADDRESS or
+           the MOST SIGNFICANT BYTE ADDRESS of the Variable of type T  */
+#if __DPCRT_LITTLE_ENDIAN
+#  define LSB_ADDR_OF(T, X) ((U8*) &(X))
+#  define MSB_ADDR_OF(T, X) ((U8*) &(X) + sizeof(T) - 1)
+#elif __DPCRT_BIG_ENDIAN
+#  define LSB_ADDR_OF(T, X) ((U8*) &(X) + sizeof(T) - 1)
+#  define MSB_ADDR_OF(T, X) ((U8*) &(X))
+#endif
 
 __END_DECLS
 

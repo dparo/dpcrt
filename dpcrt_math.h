@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018  Davide Paro
+ * Copyright (C) 2019  Davide Paro
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -18,16 +18,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
-#ifndef HGUARD_913afe5e925b492c80162770223d0e4c
-#define HGUARD_913afe5e925b492c80162770223d0e4c
-
+#ifndef HGUARD_a523ca5511dd4899b58810e4e3fb4b95
+#define HGUARD_a523ca5511dd4899b58810e4e3fb4b95
 
 #include "dpcrt_utils.h"
 #include "dpcrt_types.h"
-#include "dpcrt_math.h"
+
 
 __BEGIN_DECLS
+
+
+#ifndef PI
+# define PI (3.14159265359)
+#endif
+
+# ifndef EULER_NUM
+#  define EULER_NUM 2.71828182846
+#endif
 
 
 // @NOTE ::
@@ -97,6 +104,8 @@ laplace_cdf_f64(F64 x,
 F64
 stirling_binomial(uint32 n);
 
+
+
 __END_DECLS
 
-#endif  /* HGUARD_913afe5e925b492c80162770223d0e4c */
+#endif  /* HGUARD_a523ca5511dd4899b58810e4e3fb4b95 */

@@ -21,8 +21,8 @@
 
 #include <stdarg.h>
 
-#include "pal.h"
-#include "utils.h"
+#include "dpcrt_pal.h"
+#include "dpcrt_utils.h"
 
 #include <windows.h>
 

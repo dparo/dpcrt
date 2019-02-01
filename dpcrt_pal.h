@@ -76,7 +76,7 @@ enum open_file_flags {
     FILE_TRUNC     = (1 << 13),
 };
 
-#if __PAL_LINUX__
+#if __DPCRT_LINUX
 typedef int   pid_t;
 typedef int   FileHandle;
 typedef pid_t ProcHandle;
@@ -102,7 +102,7 @@ static const DllHandle    Invalid_DllHandle    = 0;
 static const ThreadHandle Invalid_ThreadHandle = 0; /* @TODO Is `0` a valid marker for an invalid ThreadHandle on Linux ???? */
 
 
-#elif __PAL_WINDOWS__
+#elif __DPCRT_WINDOWS
 
 // @TODO :: Once we start having a nice windows compilation sort those typedefs out.
 
@@ -432,13 +432,13 @@ __inline__ static void __trap_instruction(void)
 
 /* This macro can be usefull in debug Builds to mark a function to be `thread_safe`.
    If the function is called from multiple thread, this macro will assert.
-   The first thread that calls a function marked with `not_thread_safe()` will
+   The first thread that calls a function marked with `non_thread_safe()` will
    own the function from now on. Any other thread trying to reuse the function
    from now on will trigger an assertion.
    This can be usefull in functions where you use global variables or static variables,
    or even in callback functions arriving from some other library that you're
    not sure in which thread you will get called from. */
-#  define not_thread_safe()                                             \
+#  define non_thread_safe()                                             \
     do {                                                                \
         static ThreadID __last_thread_id__ = 0;                         \
         ThreadID __expected__ = 0;                                      \
@@ -451,7 +451,7 @@ __inline__ static void __trap_instruction(void)
     } while(0)
 
 #else
-#  define not_thread_safe()
+#  define non_thread_safe()
 #endif
 
 

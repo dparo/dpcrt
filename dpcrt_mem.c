@@ -190,7 +190,7 @@ mem_realloc__release ( enum ReallocStrategy realloc_strategy,
 }
 
 
-#if MEMORY_LAYER_DEBUG_CODE
+#if __DPCRT_MEM_LAYER__COMPILE_DEBUG_CODE
 // Memory realloc debug code. A new addr is always guaranteed
 // to be generated except for the `realloc_none` & `mremap keepaddr` flag.
 //  This is a convenient function to test if some pointers
@@ -242,7 +242,7 @@ mem_realloc__debug ( enum ReallocStrategy realloc_strategy,
         const enum AllocStrategy alloc_strategy = AllocStrategy_Mmap;
         void *new_addr = mem_alloc(alloc_strategy, new_size, alignment);
         memcpy(new_addr, old_addr, old_size);
-#if MEMORY_LAYER_MREMAP_PROTECT_OLD_MMAPED_REGION
+#if __DPCRT_MEM_LAYER__MREMAP_PROTECT_OLD_MMAPED_REGION
         const bool was_protected = pal_mprotect(old_addr, old_size, PAGE_PROT_NONE);
         assert(was_protected); // debug code we can simply assert here
 #else
