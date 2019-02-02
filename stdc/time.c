@@ -21,6 +21,7 @@
 #include "time.h"
 #include "dpcrt.h"
 
+#if 0
 char *
 strptime (const char *__restrict s,
           const char *__restrict f,
@@ -60,3 +61,4 @@ gmtime (const time_t *time)
     assert(0);
     return 0;
 }
+#endif

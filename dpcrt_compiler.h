@@ -223,7 +223,7 @@ __BEGIN_DECLS
 
 // Compiler DLL Support, please refer to page        https://gcc.gnu.org/wiki/Visibility
 #if __DPCRT_WINDOWS || __CYGWIN__
-  #if BUILDING_DLL
+  #if __DPCRT_BUILDING_DLL
     #if __GNUC__ || __clang__
       #define DLL_GLOBAL __attribute__ ((dllexport))
     #else

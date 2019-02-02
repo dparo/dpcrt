@@ -1057,7 +1057,7 @@ mflist_alloc1(MFList *mflist, U32 alloc_size, const bool zero_initialize)
        to scan the entire blocks inside the chunk
        in order to update the `max_contiguos_block_size_avail`
        accordingly */
-    if (0) __mflist_assert_integrity(allocatable_chunk);
+    if (0) { __mflist_assert_integrity(allocatable_chunk); }
 
 
     result = (U8*) allocatable_block + sizeof(MFListBlock);
