@@ -430,14 +430,14 @@ __inline__ static void __trap_instruction(void)
 #include "dpcrt_atomics.h"
 
 
-/* This macro can be usefull in debug Builds to mark a function to be `thread_safe`.
-   If the function is called from multiple thread, this macro will assert.
+/* This macro can be usefull in debug Builds to mark a function to be `non_thread_safe`.
+   If the function is called from multiple threads, this macro will assert.
    The first thread that calls a function marked with `non_thread_safe()` will
    own the function from now on. Any other thread trying to reuse the function
    from now on will trigger an assertion.
    This can be usefull in functions where you use global variables or static variables,
-   or even in callback functions arriving from some other library that you're
-   not sure in which thread you will get called from. */
+   or even in callback functions arriving from a 3rd party library to
+   assert and make sure that you always get called from the same thread. */
 #  define non_thread_safe()                                             \
     do {                                                                \
         static ThreadID __last_thread_id__ = 0;                         \

@@ -90,7 +90,7 @@ __BEGIN_DECLS
     __atomic_is_lock_free(size, ptr)
     
 #else
-#  error "Needs support for thig platform"
+#  error "Needs support for this platform"
 #endif
 
 

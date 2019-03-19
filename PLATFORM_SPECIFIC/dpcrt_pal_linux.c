@@ -291,8 +291,6 @@ page_type_flags__convert(enum page_type_flags type)
     return result;
 }
 
-// Insipired by mmap function, auxiliary functions
-//     which other specilized functions depends on
 static void*
 pal_mmap_aux( void* addr, size_t size, enum page_prot_flags prot, enum page_type_flags type, FileHandle fh)
 {

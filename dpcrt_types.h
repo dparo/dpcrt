@@ -145,21 +145,59 @@ typedef long long time_t;
 #  define  U8_LIT(x) ( (U8) (x))
 #  define I16_LIT(x) ((I16) (x))
 #  define U16_LIT(x) ((U16) (x))
-#  define I32_LIT(x) ((I32) (x))             // Example: 1234
-#  define U32_LIT(x) ((U32) (CONCAT(x, U)))  // Example: 1234U
-#  define I64_LIT(x) ((I64) (CONCAT(x, L)))  // Example: 1234L
-#  define U64_LIT(x) ((U64) (CONCAT(x, UL))) // Example: 1234UL
+#  define I32_LIT(x) ((I32) (x))
+#  define U32_LIT(x) ((U32) x ## U)
+#  define I64_LIT(x) ((I64) x ## L)
+#  define U64_LIT(x) ((U64) x ## UL)
 #elif __DPCRT_ARCH_SIZE == 32
 #  define  I8_LIT(x) ( (I8) (x))
 #  define  U8_LIT(x) ( (U8) (x))
 #  define I16_LIT(x) ((I16) (x))
 #  define U16_LIT(x) ((U16) (x))
-#  define I32_LIT(x) ((I32) (x))              // Example: 1234
-#  define U32_LIT(x) ((U32) (CONCAT(x, U)))   // Example: 1234U
-#  define I64_LIT(x) ((I64) (CONCAT(x, LL)))  // Example: 1234LL
-#  define U64_LIT(x) ((U64) (CONCAT(x, ULL))) // Example: 1234ULL
+#  define I32_LIT(x) ((I32) (x))
+#  define U32_LIT(x) ((U32) x ## U)
+#  define I64_LIT(x) ((I64) x ## LL)
+#  define U64_LIT(x) ((U64) x ## ULL)
 #endif
 
+#define I8_C(x)  I8_LIT(x)
+#define U8_C(x)  U8_LIT(x)
+#define I16_C(x) I16_LIT(x)
+#define U16_C(x) U16_LIT(x)
+#define I32_C(x) I32_LIT(x)
+#define U32_C(x) U32_LIT(x)
+#define I64_C(x) I64_LIT(x)
+#define U64_C(x) U64_LIT(x)
+
+
+#ifndef INT8_C
+#  define INT8_C(x) I8_C(x)
+#endif
+#ifndef UINT8_C
+#  define UINT8_C(x) U8_C(x)
+#endif
+#ifndef INT16_C
+#  define INT16_C(x) I16_C(x)
+#endif
+#ifndef UINT16_C
+#  define UINT16_C(x) U16_C(x)
+#endif
+#ifndef INT32_C
+#  define INT32_C(x) I32_C(x)
+#endif
+#ifndef UINT32_C
+#  define UINT32_C(x) U32_C(x)
+#endif
+#ifndef INT64_C
+#  define INT64_C(x) I64_C(x)
+#endif
+#ifndef UINT64_C
+#  define UINT64_C(x) U64_C(x)
+#endif
+
+    
+
+    
 
 /* Tecnically the C99 Standard defines a Hexadecimal Literal
    to be the type of the smallest possible type that can contain it.
@@ -273,14 +311,14 @@ __cstr_to_str32__(char *s, size_t str_len)
 
 /* Doubly Linked List */
 /* void DLIST_INIT(T *head) */
-#define DLIST_INIT(head)                        \
+#define DLIST_HEAD_INIT(head)                   \
     do {                                        \
         (head)->next = NULL;                    \
         (head)->prev = NULL;                    \
     } while(0)
 
 /* void DLIST_PUSH(T& *head, T *new_elem) */
-#define DLIST_PUSH(head, new_elem)                     \
+#define DLIST_HEAD_PUSH(head, new_elem)                \
     do {                                               \
         (new_elem)->next = *(head);                    \
         (new_elem)->prev = NULL;                       \
@@ -290,9 +328,9 @@ __cstr_to_str32__(char *s, size_t str_len)
 
 
 ATTRIB_CONST static inline void *
-__dlist_pop__(void *restrict *restrict const head,
-              void *restrict *restrict const head_next,       // (*head)->next
-              void *restrict *restrict const head_next_prev)  // (*head)->next->prev)
+__dlist_head_pop__(void *restrict *restrict const head,
+                   void *restrict *restrict const head_next,       // (*head)->next
+                   void *restrict *restrict const head_next_prev)  // (*head)->next->prev)
 {
     if (!(*head)) return NULL;
     void *const result = *head;
@@ -336,7 +374,6 @@ __dlist_dequeue__(void *restrict *restrict const tail,
     return result;
 }
 
-
 /* T* DLIST_DEQUEUE(T& *tail) */
 #define DLIST_DEQUEUE(tail)                                             \
     __dlist_dequeue__((void *restrict *restrict const) &(tail),         \
@@ -360,10 +397,19 @@ __dlist_dequeue__(void *restrict *restrict const tail,
             ((target)->next)->prev = ((target)->prev); \
         if (((target)->prev))                          \
             ((target)->prev)->next = ((target)->next); \
-        if ((target) == (head))                        \
-            (head) = (target)->next;                   \
+        if ((target) == (*(head)))                     \
+            (*(head)) = (target)->next;                \
         DLIST_INIT(target);                            \
     } while(0);
+
+
+#define DLIST_FOREACH(type, it, head)                  \
+    for (type it = head; it != NULL; it = it->next)
+
+#define DLIST_FOREACH_ENQUEUED(type, it, tail)         \
+    for (type it = tail; it != NULL; it = tail->prev)
+
+
 
 
 __END_DECLS
