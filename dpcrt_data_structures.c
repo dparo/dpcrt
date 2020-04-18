@@ -1,8 +1,9 @@
 #include "dpcrt_data_structures.h"
 
 
-void
+void *
 Insert()
 {
+    
     return NULL;
 }

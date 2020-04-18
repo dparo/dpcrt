@@ -37,7 +37,7 @@ __BEGIN_DECLS
     __atomic_store_n(ptr, value, __ATOMIC_SEQ_CST)
 #  define /* type */ atomic_exchange(/* type* */ ptr, /* type */ value) \
     __atomic_compare_exchange_n(ptr, value, __ATOMIC_SEQ_CST)
-#  define /* bool */ atomic_compare_exchange(/* type* */ ptr, /* type* */ expected_out_addr, /* type */ desired) \
+#  define /* bool */ atomic_compare_exchange(/* [TYPE *] */ ptr, /* [TYPE *] */ expected_out_addr, /* [TYPE] */ desired) \
     __atomic_compare_exchange_n(ptr, expected_out_addr, desired, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
 
 

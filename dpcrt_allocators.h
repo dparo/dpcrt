@@ -27,6 +27,34 @@
 #include "dpcrt_mem.h"
 
 
+#if 0
+struct VTABLE_GenericAllocator {
+    void* (*Alloc)   (void *self, size_t size, bool zero_initialize);
+    void* (*Realloc) (void *self, void *old_addr, size_t old_size, size_t new_size, bool zero_initialize);
+    void  (*Free)    (void* self, void *old_addr, size_t old_size);
+    void  (*Flush)   (void *self);
+
+    void  (*Config)  (void *self, enum allocator_config_setting setting, size_t value);
+};
+
+struct VTABLE_StackAllocator {
+    void* (*Push)        (void *self, void *data, size_t size);
+    void* (*PushCString) (void *self, char *data);
+
+    void  (*Flush)       (void *self);
+
+    void  (*Begin)       (void *self);
+    void* (*Commit)      (void *self);
+    void  (*Dismiss)     (void *self);
+
+    void  (*Config)      (void *self, enum allocator_config_setting setting, size_t value);
+};
+
+void *data      = MPUSH(nodes_allocator, data, size);
+#endif
+
+
+
 __BEGIN_DECLS
 
 #if 0

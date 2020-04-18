@@ -346,7 +346,13 @@ pal_get_proc_addr(DllHandle handle,
 
 
 #if _MSC_VER
-#     define debug_break __debugbreak
+#  define debug_break __debugbreak
+#  define debug_break() __debugbreak
+#  define dbg_break()   __debugbreak
+#  define dbgbreak()    __debugbreak
+#  define __dbgbrk()    __debugbreak
+#  define debugger      __debugbreak   /* JS Style Like Debugger break */
+
 #else
 
 # ifndef _SIGNAL_H
@@ -368,6 +374,7 @@ __inline__ static void __trap_instruction(void)
 #define dbg_break()   raise(SIGTRAP)
 #define dbgbreak()    raise(SIGTRAP)
 #define __dbgbrk()    raise(SIGTRAP)
+#define debugger      raise(SIGTRAP)   /* JS Style Like Debugger break */
 
 #    else
 #         error "Debug break needs to be written for this architecture"

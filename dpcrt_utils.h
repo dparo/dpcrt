@@ -53,6 +53,11 @@ __BEGIN_DECLS
 #define MIN(a, b)     ((a) < (b) ? (a) : (b))
 #define MAX(a, b)     ((a) < (b) ? (b) : (a))
 
+#define SWAP(TYPE, a, b) do { (TYPE) tmp; tmp = (a); (a) = (b); (b) = tmp; } while(0)
+
+#define CLAMP_MAX(x, max) MIN(x, max)
+#define CLAMP_MIN(x, min) MAX(x, min)
+
 
 /* Returns true if `x` is a power of 2 */
 #define IS_POW2(x) (!((x) & ((x) - 1)))

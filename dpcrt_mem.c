@@ -60,6 +60,7 @@ xrealloc ( void *ptr,
         char err_msg[256];
         snprintf(err_msg, sizeof(err_msg), "MEM: Failed to reallocate %zu bytes of memory -> ERRNO", newsize);
         perror(err_msg);
+        pal_abort();
     }
     return result;
 }

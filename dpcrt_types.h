@@ -228,6 +228,34 @@ typedef long long time_t;
 #define I32_MIN (I32_LIT(0x80000000))
 #define I64_MIN (I64_LIT(0x8000000000000000))
 
+#if __DPCRT_ARCH_SIZE == 64
+#  define SIZE_MAX U64_MAX
+#elif __DPCRT_ARCH_SIZE == 32
+#  define SIZE_MAX U32_MAX
+#endif
+
+typedef struct range {
+    I32 start;
+    I32 end;
+} range_t;
+
+typedef struct wrange
+{
+    I64 start;
+    I64 end;
+} wrange_t;
+
+typedef struct prange
+{
+    void      *base;
+    uintptr_t  end;
+} prange_t;
+
+
+#define RANGE(start, end)  ((struct range)  {(start), (end)})
+#define WRANGE(start, end) ((struct wrange) {(start), (end)}) 
+#define PRANGE(base, end)  ((struct prange) {(base), (end)}) 
+
 
 typedef struct Str32Hdr {
     I32   len;
