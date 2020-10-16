@@ -19,14 +19,10 @@
  * THE SOFTWARE.
  */
 
-#ifndef HGUARD_183f4851c423485faffa8b8cd1f85f24
-#define HGUARD_183f4851c423485faffa8b8cd1f85f24
-
 #include "dpcrt_compiler.h"
 #include "dpcrt_types.h"
 #include <stdc/string.h>
 
-__BEGIN_DECLS
 
 #define cast(T, expr) (T) (expr)
 #define global extern
@@ -66,7 +62,7 @@ __BEGIN_DECLS
 #define ALIGN(TYPE, N, S) ((TYPE)  ((((TYPE)(N) + (TYPE) ((TYPE)(S) - (TYPE) 1)) / (TYPE)(S)) * (TYPE)(S)))
 /* This macro is the same as ALIGN but only works when `S` is a POWER of 2.
    `N` can still be any number.
-   @EXAMPLE 
+   @EXAMPLE
        POW2_ALIGN(1, 16)  -> 16
        POW2_ALIGN(2, 16)  -> 16
        POW2_ALIGN(16, 16) -> 16
@@ -99,11 +95,5 @@ __BEGIN_DECLS
     memclr(S, sizeof(*(S)))
 
 
-
-
-
-
-
-__END_DECLS
-
-#endif  /* HGUARD_183f4851c423485faffa8b8cd1f85f24 */
+#define ENUM_LOOKUP_DECL(TYPE, x) char * __enum_lookup_##TYPE(TYPE x)
+#define ENUM_LOOKUP(TYPE, x) __enum_lookup_##TYPE(x)

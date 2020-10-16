@@ -19,8 +19,7 @@
  * THE SOFTWARE.
  */
 
-#ifndef HGUARD_01ef9fe4705a44d2a31a6ea3027f7dfb
-#define HGUARD_01ef9fe4705a44d2a31a6ea3027f7dfb
+#pragma once
 
 #include "dpcrt_utils.h"
 #include <stdc/stdio.h>
@@ -28,7 +27,15 @@
 #include <stdc/string.h>
 
 
-__BEGIN_DECLS
+
+#define ERR(...)                                         \
+    do {                                                 \
+        fprintf(stderr, __VA_ARGS__);                    \
+        fflush(stderr);                                  \
+        assert(0);                                       \
+        exit(-1);                                        \
+    } while (0)
+
 
 enum page_prot_flags {
     PAGE_PROT_NONE  = 0,         /* Memory cannot be accessed */
@@ -414,6 +421,9 @@ __inline__ static void __trap_instruction(void)
 #endif
 
 
+#define assert_range(v, m, M) assert(((v) >= (m)) && ((v) < (M)))
+
+
 #if __DEBUG
 #  define TODO(msg)                do { } while(0)
 #  define todo(msg)                TODO(msg)
@@ -463,6 +473,28 @@ __inline__ static void __trap_instruction(void)
 
 
 
-__END_DECLS
 
-#endif  /* HGUARD_01ef9fe4705a44d2a31a6ea3027f7dfb */
+str32_list_t get_files_in_dir(char *dirpath, miface_t *allocator);
+
+str32_t get_file_root(str32_t filepath, miface_t *allocator);
+str32_t get_file_ext(str32_t filepath, miface_t *allocator);
+
+str32_t get_dirname(str32_t filepath, miface_t *allocator);
+str32_t get_basename(str32_t filepath, miface_t *allocator);
+
+path_t path_from_str32(str32_t path, miface_t *allocator);
+str32_t path_to_str32(path_t path, miface_t *allocator);
+
+void os_sleep(double secs);
+
+bool os_mkdir(char *filepath);
+void os_mkdir_p(miface_t *temp_allocator, char *path);
+
+void os_rmdir(miface_t *temp_allocator, char *path);
+void os_rmdir_contents(miface_t *temp_allocator, char *path);
+
+bool os_fexists(char *path);
+
+double os_get_ms(void);
+
+void os_print_stacktrace(void);

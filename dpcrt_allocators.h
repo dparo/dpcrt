@@ -19,57 +19,52 @@
  * THE SOFTWARE.
  */
 
-#ifndef HGUARD_6cae59f8ded7434090c01c15fe03a866
-#define HGUARD_6cae59f8ded7434090c01c15fe03a866
+#pragma once
 
 #include "dpcrt_types.h"
 #include "dpcrt_utils.h"
 #include "dpcrt_mem.h"
 
 
-#if 0
-struct VTABLE_GenericAllocator {
-    void* (*Alloc)   (void *self, size_t size, bool zero_initialize);
-    void* (*Realloc) (void *self, void *old_addr, size_t old_size, size_t new_size, bool zero_initialize);
-    void  (*Free)    (void* self, void *old_addr, size_t old_size);
-    void  (*Flush)   (void *self);
-
-    void  (*Config)  (void *self, enum allocator_config_setting setting, size_t value);
-};
-
-struct VTABLE_StackAllocator {
-    void* (*Push)        (void *self, void *data, size_t size);
-    void* (*PushCString) (void *self, char *data);
-
-    void  (*Flush)       (void *self);
-
-    void  (*Begin)       (void *self);
-    void* (*Commit)      (void *self);
-    void  (*Dismiss)     (void *self);
-
-    void  (*Config)      (void *self, enum allocator_config_setting setting, size_t value);
-};
-
-void *data      = MPUSH(nodes_allocator, data, size);
-#endif
 
 
+// Interface for a generic memory allocator
+typedef struct miface {
+    void *instance_handle;
 
-__BEGIN_DECLS
+    void *(*new)(struct miface *self, size_t size);
+    void *(*renew)(struct miface *self, void *oldptr, size_t newsize);
+    void (*del)(struct miface *self, void *oldptr);
+    void (*clear)(struct miface *self);
+} miface_t;
 
-#if 0
-typedef struct AllocationChunk
+/// a clear call is enough to destroy the entire allocator and to not leak any memory
+miface_t make_malloc_based_allocator(void);
+
+
+#define MNEW(iface, size) (iface)->new ((iface), (size))
+#define MRENEW(iface, oldptr, newsize) (iface)->renew((iface), (oldptr), (newsize))
+#define MDEL(iface, oldptr) (iface)->del((iface), (oldptr))
+#define MCLEAR(iface) (iface)->clear((iface))
+
+#define ANEW(elem_type, iface, cnt) (MNEW(iface, (cnt) * sizeof(elem_type)))
+#define APUSH(elem_type, array, iface, cnt) \
+    (_apush(iface, sizeof(elem_type), (void **)(array), *(cnt)) ? ((void*) *(array)) + sizeof(elem_type) * ((*(cnt))++) : NULL)
+
+static inline bool _apush(miface_t *iface, size_t elem_size, void **array_ptr, size_t cnt)
 {
-    /* Size of the chunk that was allocated successfully.
-       In case the allocation failed, this field _should_
-       be set to 0, to avoid usage of uninitialized memory. */
-    size_t  size_of_chunk;
+    void *p = MRENEW(iface, *array_ptr, (cnt + 1) * elem_size);
+    if (p) {
+        *array_ptr = p;
+        return true;
+    } else {
+        return false;
+    }
+}
 
-    /* Pointer to the actual allocated block of memory.
-       It may be `NULL` in case the allocation failed */
-    void    *data;
-} AllocationChunk;
-#endif
+
+
+
 
 
 typedef struct MPoolBlock
@@ -168,7 +163,7 @@ typedef struct MFListBlock
 
 typedef struct MFListChunk
 {
-    
+
     /* Chain of chunks belonging to the same allocation categ.
        Or NULL in case it's the last one in the chain. */
     struct MFListChunk *prev_chunk;
@@ -440,6 +435,5 @@ marena_unpack_ref__unsafe(MArena *arena, MRef ref)
 }
 
 
-__END_DECLS
 
 #endif /* HGUARD_6cae59f8ded7434090c01c15fe03a866 */

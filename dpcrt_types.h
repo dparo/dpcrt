@@ -18,10 +18,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
-#ifndef HGUARD_ac8c7d54818e489096b120ef3afb4a25
-#define HGUARD_ac8c7d54818e489096b120ef3afb4a25
-
 #include "dpcrt_compiler.h"
 
 
@@ -195,9 +191,9 @@ typedef long long time_t;
 #  define UINT64_C(x) U64_C(x)
 #endif
 
-    
 
-    
+
+
 
 /* Tecnically the C99 Standard defines a Hexadecimal Literal
    to be the type of the smallest possible type that can contain it.
@@ -253,8 +249,203 @@ typedef struct prange
 
 
 #define RANGE(start, end)  ((struct range)  {(start), (end)})
-#define WRANGE(start, end) ((struct wrange) {(start), (end)}) 
-#define PRANGE(base, end)  ((struct prange) {(base), (end)}) 
+#define WRANGE(start, end) ((struct wrange) {(start), (end)})
+#define PRANGE(base, end)  ((struct prange) {(base), (end)})
+
+
+
+
+// str32_t are valid c strings by definition. They are null terminated
+typedef struct str32 {
+    char *cstr;
+    int32_t len;
+} str32_t;
+
+typedef struct str32_list {
+    str32_t *ss;
+    int32_t cnt;
+} str32_list_t;
+
+#define STR32(s) ((str32_t){ s, strlen(s) })
+
+// Substring usually live inside a c string or another str32_t. And
+// thus they are not guaranteed to be null terminated
+typedef struct substr {
+    char *base;
+    int32_t len;
+} substr32_t;
+
+typedef struct path {
+    str32_t drive;
+    str32_t dirpath;
+    str32_t fileroot;
+    str32_t fileext;
+} path_t;
+
+
+
+
+static inline bool streq(const char *s1, const char *s2)
+{
+    return 0 == strcmp(s1, s2);
+}
+
+static inline int32_t str32_cmp(const str32_t s1, const str32_t s2)
+{
+    int32_t diff = s1.len - s2.len;
+    if (diff != 0)
+        return diff;
+    else
+        return strcmp(s1.cstr, s2.cstr);
+}
+
+static inline int32_t str32_eq(const str32_t s1, const str32_t s2)
+{
+    return 0 == str32_cmp(s1, s2);
+}
+
+static inline int32_t str32_find(const str32_t s1, const str32_t s2)
+{
+    char *ptr = strstr(s1.cstr, s2.cstr);
+    if (ptr == NULL) {
+        return INT32_MIN;
+    } else {
+        return ptr - s1.cstr;
+    }
+}
+
+static inline bool str32_contains(const str32_t s1, const str32_t s2)
+{
+    return str32_find(s1, s2) >= 0;
+}
+
+static inline int32_t substr_cmp(const substr32_t s1, const substr32_t s2)
+{
+    int32_t diff = s1.len - s2.len;
+    if (diff != 0)
+        return diff;
+    else
+        return strncmp(s1.base, s2.base, s1.len);
+}
+
+static inline int32_t substr_eq(const substr32_t s1, const substr32_t s2)
+{
+    return 0 == substr_cmp(s1, s2);
+}
+
+static inline str32_t str32_dup(miface_t *alloc, str32_t s)
+{
+    str32_t result = { 0 };
+    char *mem = MNEW(alloc, s.len + 1);
+    if (mem) {
+        strncpy(mem, s.cstr, s.len + 1);
+        result.cstr = mem;
+        result.len = s.len;
+    }
+    return result;
+}
+
+static inline str32_t str32_fmt(miface_t *alloc, char *fmt, ...)
+{
+    str32_t result = { 0 };
+    va_list ap;
+    va_start(ap, fmt);
+    int required_len = vsnprintf(NULL, 0, fmt, ap);
+    result.cstr = MNEW(alloc, required_len + 1);
+    va_start(ap, fmt);
+    if (result.cstr) {
+        result.cstr[0] = '\0';
+        result.cstr[required_len] = '\0';
+        result.len = required_len;
+        vsprintf(result.cstr, fmt, ap);
+    }
+
+    va_end(ap);
+    return result;
+}
+
+static inline str32_list_t str32_split(miface_t *alloc, str32_t s, char c)
+{
+    str32_list_t result = { 0 };
+    int32_t start = 0;
+    int32_t i = 0;
+    for (i = 0; i < s.len; i++) {
+        if (s.cstr[i] == c) {
+            result.ss = MRENEW(alloc, result.ss, (result.cnt + 1) * sizeof(str32_t));
+            if (!result.ss) {
+                str32_list_t empty_list = { 0 };
+                return empty_list;
+            }
+            result.ss[result.cnt++] = str32_fmt(alloc, "%.*s", i - start, &(s.cstr[start]));
+            start = i + 1;
+        }
+    }
+
+    result.ss = MRENEW(alloc, result.ss, (result.cnt + 1) * sizeof(str32_t));
+    if (!result.ss) {
+        str32_list_t empty_list = { 0 };
+        return empty_list;
+    }
+    result.ss[result.cnt++] = str32_fmt(alloc, "%.*s", i - start, &(s.cstr[start]));
+    return result;
+}
+
+static inline int32_t str32_list_find(str32_list_t *l, str32_t s)
+{
+    for (int32_t i = 0; i < l->cnt; i++) {
+        if (str32_eq(l->ss[i], s)) {
+            return i;
+        }
+    }
+    return INT32_MIN;
+}
+
+static inline bool str32_list_contains(str32_list_t *l, str32_t s)
+{
+    return str32_list_find(l, s) >= 0;
+}
+
+
+
+static inline bool _is_digit(char c)
+{
+    return (c >= '0' && c <= '9');
+}
+
+static inline bool _is_alpha(char c)
+{
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
+static inline bool _is_alnum(char c)
+{
+    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
+static inline bool _is_space(char c)
+{
+    return (c == ' ' || c == '\f' || c == '\n' || c == '\r' || c == '\t' || c == '\v');
+}
+
+static inline char *substr32_to_cstr(miface_t *allocator, substr32_t *s)
+{
+    char *result = NULL;
+    result = MNEW(allocator, s->len + 1);
+    if (result) {
+        memcpy(result, s->base, s->len);
+        result[s->len] = 0;
+    }
+    return result;
+}
+
+
+
+
+bool cstr_to_int32(char *string, int32_t *i);
+bool cstr_to_double(char *string, double *d);
+
+
+
 
 
 typedef struct Str32Hdr {
@@ -436,10 +627,3 @@ __dlist_dequeue__(void *restrict *restrict const tail,
 
 #define DLIST_FOREACH_ENQUEUED(type, it, tail)         \
     for (type it = tail; it != NULL; it = tail->prev)
-
-
-
-
-__END_DECLS
-
-#endif  /* HGUARD_ac8c7d54818e489096b120ef3afb4a25 */

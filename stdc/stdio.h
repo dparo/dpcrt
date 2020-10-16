@@ -18,10 +18,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef HGUARD_9450a2815fb5433089759d98d74dbcad
-#define HGUARD_9450a2815fb5433089759d98d74dbcad
-
-__BEGIN_DECLS
+#pragma once
 
 #include "dpcrt_utils.h"
 
@@ -72,13 +69,18 @@ size_t   fwrite (const void *restrict buf, size_t sizeof_1_element, size_t count
 int      fseek  (FILE *f, long int offset, int whence);
 long int ftell  (FILE *f) ATTRIB_NODISCARD;
 
+static inline size_t fsize(FILE *f)
+{
+    fseek(f, 0L, SEEK_END);
+    size_t result = ftell(f);
+    fseek(f, 0L, SEEK_SET);
+    return result;
+}
+
+
 
 
 void perror (const char *s);
 
 
 #endif
-
-__END_DECLS
-
-#endif  /* HGUARD_9450a2815fb5433089759d98d74dbcad */

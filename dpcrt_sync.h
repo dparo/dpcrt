@@ -18,17 +18,5 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef HGUARD_de2652fbd0924c229b59853e867a7a6d
-#define HGUARD_de2652fbd0924c229b59853e867a7a6d
-
+#pragma once
 #include "dpcrt_utils.h"
-
-
-__BEGIN_DECLS
-
-
-
-
-__END_DECLS
-
-#endif /* HGUARD_de2652fbd0924c229b59853e867a7a6d */

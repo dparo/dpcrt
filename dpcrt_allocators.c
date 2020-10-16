@@ -21,6 +21,10 @@
 
 #include "dpcrt_allocators.h"
 
+#include <assert.h>
+#include <memory.h>
+
+
 #ifdef MPOOL_DISABLE_DEBUG_ASSERTION
 #  define internal_assert(...)
 #  define internal_assert_msg(...)
@@ -31,6 +35,142 @@
 
 
 #include "dpcrt_valgrind_memcheck.h"
+
+
+typedef struct alloc_entry {
+    size_t size;
+    void *ptr;
+} alloc_entry_t;
+
+typedef struct malloc_miface {
+    size_t num_allocs;
+    alloc_entry_t *table;
+} malloc_miface_t;
+
+#define MALLOC_MIFACE_GET_HANDLE(self) ((malloc_miface_t *)((self)->instance_handle))
+
+void *malloc_miface_new(struct miface *self, size_t size)
+{
+    malloc_miface_t *iface = MALLOC_MIFACE_GET_HANDLE(self);
+
+    void *ptr = malloc(size);
+    if (ptr) {
+        void *newTable = realloc(iface->table, sizeof(alloc_entry_t) * (iface->num_allocs + 1));
+        if (newTable) {
+            iface->table = newTable;
+            iface->table[iface->num_allocs].ptr = ptr;
+            iface->table[iface->num_allocs].size = size;
+            ++iface->num_allocs;
+        } else {
+            free(ptr);
+        }
+    }
+
+    memset(ptr, 0, size);
+    return ptr;
+}
+
+alloc_entry_t *_malloc_iface_query_alloc_entry(malloc_miface_t *iface, void *ptr)
+{
+    alloc_entry_t *entry = NULL;
+    for (size_t i = 0; i < iface->num_allocs; i++) {
+        if (iface->table[i].ptr == ptr) {
+            entry = &iface->table[i];
+            break;
+        }
+    }
+    return entry;
+}
+
+void *malloc_miface_renew(struct miface *self, void *oldptr, size_t newsize)
+{
+    malloc_miface_t *iface = MALLOC_MIFACE_GET_HANDLE(self);
+
+    if (oldptr == NULL)
+        return malloc_miface_new(self, newsize);
+
+    alloc_entry_t *entry = _malloc_iface_query_alloc_entry(iface, oldptr);
+    assert(entry);
+
+    void *newResourcePtr = realloc(oldptr, newsize);
+    if (newResourcePtr) {
+        entry->ptr = newResourcePtr;
+        entry->size = newsize;
+    }
+
+    return newResourcePtr;
+}
+
+void malloc_miface_del(struct miface *self, void *oldptr)
+{
+    malloc_miface_t *iface = MALLOC_MIFACE_GET_HANDLE(self);
+
+    alloc_entry_t *entry = NULL;
+    for (size_t i = 0; i < iface->num_allocs; i++) {
+        if (iface->table[i].ptr == oldptr) {
+            entry = &iface->table[i];
+            break;
+        }
+    }
+
+    assert(entry);
+
+#if _DEBUG
+    memset(entry->ptr, 0xCC, entry->size);
+#endif
+
+    free(entry->ptr);
+    entry->ptr = NULL;
+    entry->size = 0;
+
+    // Swap with the last allocation, we could have equivalently
+    // swapped it with a random allocation excluding the current one.
+    *entry = iface->table[iface->num_allocs - 1];
+
+    void *newTable = realloc(iface->table, (iface->num_allocs - 1) * sizeof(alloc_entry_t));
+    iface->table = newTable;
+    --iface->num_allocs;
+}
+
+void malloc_miface_clear(struct miface *self)
+{
+    malloc_miface_t *iface = MALLOC_MIFACE_GET_HANDLE(self);
+    for (size_t i = 0; i < iface->num_allocs; i++) {
+        alloc_entry_t *entry = &iface->table[i];
+
+#if _DEBUG
+        memset(entry->ptr, 0xCC, entry->size);
+#endif
+        free(entry->ptr);
+        entry->ptr = 0;
+        entry->size = 0;
+    }
+
+    iface->num_allocs = 0;
+    free(iface->table);
+    iface->table = NULL;
+}
+
+miface_t make_malloc_based_allocator(void)
+{
+    miface_t result = {};
+    malloc_miface_t *iface = malloc(sizeof(malloc_miface_t));
+    if (iface) {
+        iface->num_allocs = 0;
+        iface->table = NULL;
+    }
+
+    result.instance_handle = (void *)iface;
+    result.new = malloc_miface_new;
+    result.renew = malloc_miface_renew;
+    result.del = malloc_miface_del;
+    result.clear = malloc_miface_clear;
+    return result;
+}
+
+
+
+
 
 
 
@@ -1847,28 +1987,32 @@ marena_ask_alignment(MArena *arena, U32 alignment)
 #define MARENA_PUSH_WRAPPER_DEF(...)            \
     marena_begin(arena);                        \
     __VA_ARGS__;                                \
-    return marena_commit(arena);                \
+    return marena_commit(arena);
+
+
+
+
 
 
 /* @NOTE :: Those functions bundles a `marena_begin()` `marena_commit()`
    calls for usage convenience */
-MRef marena_push                (MArena *arena, U32 size, bool initialize_to_zero )         { MARENA_PUSH_WRAPPER_DEF(marena_add                (arena, size, initialize_to_zero)) }
-MRef marena_push_data           (MArena *arena, void *data, U32 sizeof_data )               { MARENA_PUSH_WRAPPER_DEF(marena_add_data           (arena, data, sizeof_data)) }
-MRef marena_push_pointer        (MArena *arena, void *pointer)                              { MARENA_PUSH_WRAPPER_DEF(marena_add_pointer        (arena, pointer)) }
-MRef marena_push_byte           (MArena *arena, byte_t b )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_byte           (arena, b )) }
-MRef marena_push_char           (MArena *arena, char c )                                    { MARENA_PUSH_WRAPPER_DEF(marena_add_char           (arena, c )) }
-MRef marena_push_i8             (MArena *arena, I8 i8 )                                     { MARENA_PUSH_WRAPPER_DEF(marena_add_i8             (arena, i8 )) }
-MRef marena_push_u8             (MArena *arena, U8 u8 )                                     { MARENA_PUSH_WRAPPER_DEF(marena_add_u8             (arena, u8 )) }
-MRef marena_push_i16            (MArena *arena, I16 i16 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i16            (arena, i16 )) }
-MRef marena_push_u16            (MArena *arena, U16 u16 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u16            (arena, u16 )) }
-MRef marena_push_i32            (MArena *arena, I32 i32 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i32            (arena, i32 )) }
-MRef marena_push_u32            (MArena *arena, U32 u32 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u32            (arena, u32 )) }
-MRef marena_push_i64            (MArena *arena, I64 i64 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_i64            (arena, i64 )) }
-MRef marena_push_u64            (MArena *arena, U64 u64 )                                   { MARENA_PUSH_WRAPPER_DEF(marena_add_u64            (arena, u64 )) }
-MRef marena_push_size_t         (MArena *arena, size_t s )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_size_t         (arena, s )) }
-MRef marena_push_usize          (MArena *arena, usize us )                                  { MARENA_PUSH_WRAPPER_DEF(marena_add_usize          (arena, us )) }
-MRef marena_push_cstr           (MArena *arena, char* cstr )                                { MARENA_PUSH_WRAPPER_DEF(marena_add_cstr           (arena, cstr )) }
-MRef marena_push_pstr32         (MArena *arena, PStr32 *pstr32 )                            { MARENA_PUSH_WRAPPER_DEF(marena_add_pstr32        (arena, pstr32 )) }
-MRef marena_push_str32_nodata   (MArena *arena, Str32 str32 )                               { MARENA_PUSH_WRAPPER_DEF(marena_add_str32_nodata   (arena, str32 )) }
-MRef marena_push_str32_withdata (MArena *arena, Str32 str32 )                               { MARENA_PUSH_WRAPPER_DEF(marena_add_str32_withdata (arena, str32 )) }
-MRef marena_push_alignment      (MArena *arena, U32 alignment)                              { MARENA_PUSH_WRAPPER_DEF(marena_ask_alignment      (arena, alignment)) }
+MRef marena_push                (MArena *arena, U32 size, bool initialize_to_zero )	{ MARENA_PUSH_WRAPPER_DEF(marena_add                (arena, size, initialize_to_zero)) }
+MRef marena_push_data           (MArena *arena, void *data, U32 sizeof_data )		{ MARENA_PUSH_WRAPPER_DEF(marena_add_data           (arena, data, sizeof_data)) }
+MRef marena_push_pointer        (MArena *arena, void *pointer)				{ MARENA_PUSH_WRAPPER_DEF(marena_add_pointer        (arena, pointer)) }
+MRef marena_push_byte           (MArena *arena, byte_t b )				{ MARENA_PUSH_WRAPPER_DEF(marena_add_byte           (arena, b )) }
+MRef marena_push_char           (MArena *arena, char c )				{ MARENA_PUSH_WRAPPER_DEF(marena_add_char           (arena, c )) }
+MRef marena_push_i8             (MArena *arena, I8 i8 )					{ MARENA_PUSH_WRAPPER_DEF(marena_add_i8             (arena, i8 )) }
+MRef marena_push_u8             (MArena *arena, U8 u8 )					{ MARENA_PUSH_WRAPPER_DEF(marena_add_u8             (arena, u8 )) }
+MRef marena_push_i16            (MArena *arena, I16 i16 )				{ MARENA_PUSH_WRAPPER_DEF(marena_add_i16            (arena, i16 )) }
+MRef marena_push_u16            (MArena *arena, U16 u16 )				{ MARENA_PUSH_WRAPPER_DEF(marena_add_u16            (arena, u16 )) }
+MRef marena_push_i32            (MArena *arena, I32 i32 )				{ MARENA_PUSH_WRAPPER_DEF(marena_add_i32            (arena, i32 )) }
+MRef marena_push_u32            (MArena *arena, U32 u32 )				{ MARENA_PUSH_WRAPPER_DEF(marena_add_u32            (arena, u32 )) }
+MRef marena_push_i64            (MArena *arena, I64 i64 )				{ MARENA_PUSH_WRAPPER_DEF(marena_add_i64            (arena, i64 )) }
+MRef marena_push_u64            (MArena *arena, U64 u64 )				{ MARENA_PUSH_WRAPPER_DEF(marena_add_u64            (arena, u64 )) }
+MRef marena_push_size_t         (MArena *arena, size_t s )				{ MARENA_PUSH_WRAPPER_DEF(marena_add_size_t         (arena, s )) }
+MRef marena_push_usize          (MArena *arena, usize us )				{ MARENA_PUSH_WRAPPER_DEF(marena_add_usize          (arena, us )) }
+MRef marena_push_cstr           (MArena *arena, char* cstr )				{ MARENA_PUSH_WRAPPER_DEF(marena_add_cstr           (arena, cstr )) }
+MRef marena_push_pstr32         (MArena *arena, PStr32 *pstr32 )			{ MARENA_PUSH_WRAPPER_DEF(marena_add_pstr32        (arena, pstr32 )) }
+MRef marena_push_str32_nodata   (MArena *arena, Str32 str32 )				{ MARENA_PUSH_WRAPPER_DEF(marena_add_str32_nodata   (arena, str32 )) }
+MRef marena_push_str32_withdata (MArena *arena, Str32 str32 )				{ MARENA_PUSH_WRAPPER_DEF(marena_add_str32_withdata (arena, str32 )) }
+MRef marena_push_alignment      (MArena *arena, U32 alignment)				{ MARENA_PUSH_WRAPPER_DEF(marena_ask_alignment      (arena, alignment)) }

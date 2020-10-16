@@ -923,3 +923,243 @@ pal_get_proc_addr(DllHandle handle,
     result = dlsym(handle, symbol_name);
     return result;
 }
+
+
+str32_list_t get_files_in_dir(char *dirpath, miface_t *allocator)
+{
+    str32_list_t result = { 0 };
+
+    result.ss = ANEW(str32_t, allocator, 0);
+
+    struct dirent *entry = NULL;
+    DIR *dp = NULL;
+
+    dp = opendir(dirpath);
+    if (dp != NULL) {
+        while ((entry = readdir(dp))) {
+            if ((0 != strcmp(".", entry->d_name)) && (0 != strcmp("..", entry->d_name))) {
+                if (APUSH(str32_t, &result.ss, allocator, &result.cnt)) {
+                    str32_t *s = &result.ss[result.cnt - 1];
+                    str32_t temp_string = str32_fmt(allocator, "%s/%s", dirpath, entry->d_name);
+                    if (!temp_string.cstr)
+                        break;
+                    *s = temp_string;
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
+str32_t get_file_root(str32_t filepath, miface_t *allocator)
+{
+    str32_t result = { 0 };
+
+    char *dot_location = NULL;
+    char *slash_location = NULL;
+
+    int32_t i = filepath.len - 1;
+    for (; i >= 0; i--) {
+        if (filepath.cstr[i] == '.') {
+            dot_location = &filepath.cstr[i];
+            break;
+        } else if (filepath.cstr[i] == '/') {
+            slash_location = &filepath.cstr[i];
+            break;
+        }
+    }
+
+    if (!dot_location && !slash_location) {
+        return str32_fmt(allocator, "%s\0", filepath.cstr);
+    }
+
+    for (; i >= 0; i--) {
+        if (filepath.cstr[i] == '/') {
+            slash_location = &filepath.cstr[i];
+            break;
+        }
+    }
+
+    if (dot_location) {
+        if (slash_location) {
+            ptrdiff_t len = dot_location - slash_location - 1;
+            return str32_fmt(allocator, "%.*s\0", len, slash_location + 1);
+        } else {
+            ptrdiff_t len = dot_location - filepath.cstr;
+            return str32_fmt(allocator, "%.*s\0", len, filepath.cstr);
+        }
+    } else {
+        return str32_fmt(allocator, "");
+    }
+
+    return result;
+}
+
+str32_t get_file_ext(str32_t filepath, miface_t *allocator)
+{
+    str32_t result = { 0 };
+
+    char *dot_location = NULL;
+    for (int32_t i = filepath.len - 1; i >= 0; i--) {
+        if (filepath.cstr[i] == '.') {
+            dot_location = &filepath.cstr[i];
+            break;
+        } else if (filepath.cstr[i] == '/') {
+            break;
+        }
+    }
+    if (dot_location) {
+        return str32_fmt(allocator, "%s", dot_location);
+    } else {
+        return str32_fmt(allocator, "%s", filepath.cstr);
+    }
+    return result;
+}
+
+str32_t get_dirname(str32_t filepath, miface_t *allocator)
+{
+    str32_t result = { 0 };
+    char *slash_location = NULL;
+    for (int32_t i = filepath.len - 1; i >= 0; i--) {
+        if (filepath.cstr[i] == '/') {
+            slash_location = &filepath.cstr[i];
+            break;
+        }
+    }
+
+    if (slash_location) {
+        ptrdiff_t len = slash_location - filepath.cstr;
+        return str32_fmt(allocator, "%.*s\0", len, filepath.cstr);
+    } else {
+        return str32_fmt(allocator, "");
+    }
+}
+
+str32_t get_basename(str32_t filepath, miface_t *allocator)
+{
+    str32_t result = { 0 };
+    char *slash_location = NULL;
+    for (int32_t i = filepath.len - 1; i >= 0; i--) {
+        if (filepath.cstr[i] == '/') {
+            slash_location = &filepath.cstr[i];
+            break;
+        }
+    }
+
+    if (slash_location) {
+        uintptr_t len = (filepath.cstr + filepath.len) - slash_location;
+        return str32_fmt(allocator, "%.*s\0", len, slash_location + 1);
+    } else {
+        return str32_fmt(allocator, "");
+    }
+}
+
+path_t path_from_str32(str32_t path, miface_t *allocator)
+{
+    path_t result = { 0 };
+    result.drive = str32_fmt(allocator, "");
+    result.dirpath = get_dirname(path, allocator);
+    result.fileroot = get_file_root(path, allocator);
+    result.fileext = get_file_ext(path, allocator);
+    return result;
+}
+
+str32_t path_to_str32(path_t path, miface_t *allocator)
+{
+    return str32_fmt(allocator, "%s/%s/%s%s", path.drive.cstr, path.dirpath.cstr, path.fileroot.cstr, path.fileext.cstr);
+}
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/resource.h>
+#include <time.h>
+
+#if defined(__MACH__) && defined(__APPLE__)
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+#endif
+
+bool os_mkdir(char *filepath)
+{
+    return mkdir(filepath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == 0;
+}
+
+void os_mkdir_p(miface_t *temp_allocator, char *dirpath)
+{
+    str32_t command = str32_fmt(temp_allocator, "mkdir -p \"%s\"", dirpath);
+    int err = system(command.cstr);
+    (void) err;
+}
+
+static double _myWallTime()
+{
+#ifdef __APPLE__
+    static double timeConvert = 0.0;
+    if (timeConvert == 0.0) {
+        mach_timebase_info_data_t timeBase;
+        mach_timebase_info(&timeBase);
+        timeConvert = (double)timeBase.numer / (double)timeBase.denom / 1000000.0;
+    }
+    return mach_absolute_time() * timeConvert;
+#else
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec * 1000 + 0.000001 * ((double)ts.tv_nsec);
+#endif // __APPLE__
+}
+
+double os_get_ms(void)
+{
+    return _myWallTime();
+}
+
+#include <unistd.h>
+
+void os_rmdir(miface_t *temp_allocator, char *path)
+{
+    str32_t command = str32_fmt(temp_allocator, "rm -r -f \"%s\"", path);
+    int err = system(command.cstr);
+    (void) err;
+}
+
+void os_rmdir_contents(miface_t *temp_allocator, char *path)
+{
+    str32_t command = str32_fmt(temp_allocator, "find \"%s\" -not -path '%s' | xargs rm -rf", path, path);
+    int err = system(command.cstr);
+    (void) err;
+}
+
+
+bool os_fexists(char *path)
+{
+    return access(path, R_OK | W_OK) == 0;
+}
+
+
+void os_sleep(double secs)
+{
+    useconds_t usec = secs * 1000 * 1000;
+    usleep(usec);
+}
+
+
+#include <execinfo.h>
+
+void os_print_stacktrace(void)
+{
+    void *array[10];
+    size_t size;
+    char **strings;
+    size_t i;
+
+    size = backtrace (array, 10);
+    strings = backtrace_symbols (array, size);
+
+    printf ("Obtained %zd stack frames.\n", size);
+
+    for (i = 0; i < size; i++)
+       printf ("%s\n", strings[i]);
+
+    free (strings);
+}
